@@ -220,111 +220,14 @@ func (r *Engine) executeWithMultiplex(
 		"session_id", cfg.SessionID,
 		"cc_session_id", sess.CCSessionID)
 
-	// Wait for session to be ready (process fully started)
-	readyCtx, readyCancel := context.WithTimeout(ctx, 10*time.Second)
-	defer readyCancel()
-	for {
-		status := sess.GetStatus()
-		if status == SessionStatusReady || status == SessionStatusBusy {
-			break
-		}
-		if status == SessionStatusDead {
-			return fmt.Errorf("session %s is dead, cannot execute", cfg.SessionID)
-		}
-		select {
-		case <-readyCtx.Done():
-			return fmt.Errorf("session %s not ready within 10s (status: %s)", cfg.SessionID, status)
-		case <-time.After(200 * time.Millisecond):
-			// poll again
-		}
+	if err := r.waitForSession(ctx, sess, cfg.SessionID); err != nil {
+		return err
 	}
 
 	// Create doneChan for this turn
 	doneChan := make(chan struct{})
 
-	// Bridge callback: wraps the caller's Callback with metadata enrichment
-	bridge := func(eventType string, data any) error {
-		if eventType == "runner_exit" {
-			select {
-			case <-doneChan:
-			default:
-				close(doneChan)
-			}
-			return nil
-		}
-
-		if eventType == "raw_line" {
-			line, ok := data.(string)
-			if !ok {
-				return nil
-			}
-
-			var msg StreamMessage
-			if err := json.Unmarshal([]byte(line), &msg); err != nil {
-				// Not JSON, handle gracefully
-				if callbackSafe := WrapSafe(r.logger, callback); callbackSafe != nil {
-					_ = callbackSafe("answer", line)
-				}
-				return nil
-			}
-
-			// Handle result message — extract stats and send session_stats event
-			if msg.Type == "result" {
-				r.handleResultMessage(msg, stats, cfg, callback)
-				select {
-				case <-doneChan:
-				default:
-					close(doneChan)
-				}
-				return nil
-			}
-
-			if msg.Type == "error" {
-				select {
-				case <-doneChan:
-				default:
-					close(doneChan)
-				}
-			}
-
-			// Silently consume system messages (init, hooks)
-			if msg.Type == "system" {
-				return nil
-			}
-
-			// Dispatch all other events (assistant, tool_use, error, etc.) with metadata
-			if callback != nil {
-				return r.dispatchCallback(msg, callback, stats)
-			}
-			return nil
-		}
-
-		// Legacy path for pre-parsed
-		msg, ok := data.(StreamMessage)
-		if !ok {
-			callbackSafe := WrapSafe(r.logger, callback)
-			if callbackSafe != nil {
-				_ = callbackSafe(eventType, data)
-			}
-			return nil
-		}
-
-		if msg.Type == "result" {
-			r.handleResultMessage(msg, stats, cfg, callback)
-			return nil
-		}
-
-		if msg.Type == "system" {
-			return nil
-		}
-
-		if callback != nil {
-			return r.dispatchCallback(msg, callback, stats)
-		}
-		return nil
-	}
-
-	sess.SetCallback(bridge)
+	sess.SetCallback(r.createEventBridge(cfg, callback, stats, doneChan))
 
 	// Inject Task-level constraints into the prompt for Hot-Multiplexing
 	finalPrompt := prompt
@@ -360,6 +263,103 @@ func (r *Engine) executeWithMultiplex(
 		return ctx.Err()
 	case <-timer.C:
 		return fmt.Errorf("execution timeout after %v", r.opts.Timeout)
+	}
+}
+
+func (r *Engine) waitForSession(ctx context.Context, sess *Session, sessionID string) error {
+	readyCtx, readyCancel := context.WithTimeout(ctx, 10*time.Second)
+	defer readyCancel()
+	for {
+		status := sess.GetStatus()
+		if status == SessionStatusReady || status == SessionStatusBusy {
+			return nil
+		}
+		if status == SessionStatusDead {
+			return fmt.Errorf("session %s is dead, cannot execute", sessionID)
+		}
+		select {
+		case <-readyCtx.Done():
+			return fmt.Errorf("session %s not ready within 10s (status: %s)", sessionID, status)
+		case <-time.After(200 * time.Millisecond):
+		}
+	}
+}
+
+func (r *Engine) createEventBridge(cfg *Config, callback Callback, stats *SessionStats, doneChan chan struct{}) Callback {
+	return func(eventType string, data any) error {
+		if eventType == "runner_exit" {
+			closeDoneChan(doneChan)
+			return nil
+		}
+
+		if eventType == "raw_line" {
+			line, ok := data.(string)
+			if !ok {
+				return nil
+			}
+			return r.handleStreamRawLine(line, cfg, stats, callback, doneChan)
+		}
+
+		// Legacy path for pre-parsed
+		msg, ok := data.(StreamMessage)
+		if !ok {
+			if callbackSafe := WrapSafe(r.logger, callback); callbackSafe != nil {
+				_ = callbackSafe(eventType, data)
+			}
+			return nil
+		}
+
+		if msg.Type == "result" {
+			r.handleResultMessage(msg, stats, cfg, callback)
+			closeDoneChan(doneChan)
+			return nil
+		}
+
+		if msg.Type == "system" {
+			return nil
+		}
+
+		if callback != nil {
+			return r.dispatchCallback(msg, callback, stats)
+		}
+		return nil
+	}
+}
+
+func (r *Engine) handleStreamRawLine(line string, cfg *Config, stats *SessionStats, callback Callback, doneChan chan struct{}) error {
+	var msg StreamMessage
+	if err := json.Unmarshal([]byte(line), &msg); err != nil {
+		if callbackSafe := WrapSafe(r.logger, callback); callbackSafe != nil {
+			_ = callbackSafe("answer", line)
+		}
+		return nil
+	}
+
+	if msg.Type == "result" {
+		r.handleResultMessage(msg, stats, cfg, callback)
+		closeDoneChan(doneChan)
+		return nil
+	}
+
+	if msg.Type == "error" {
+		closeDoneChan(doneChan)
+	}
+
+	if msg.Type == "system" {
+		return nil
+	}
+
+	if callback != nil {
+		return r.dispatchCallback(msg, callback, stats)
+	}
+	return nil
+}
+
+func closeDoneChan(doneChan chan struct{}) {
+	select {
+	case <-doneChan:
+	default:
+		close(doneChan)
 	}
 }
 
@@ -448,15 +448,12 @@ func (r *Engine) handleResultMessage(msg StreamMessage, stats *SessionStats, cfg
 // 2. NOT call back into Session/Engine methods (risk of deadlock)
 // 3. Be safe for concurrent invocation from multiple goroutines
 func (r *Engine) dispatchCallback(msg StreamMessage, callback Callback, stats *SessionStats) error {
-	// Skip processing if stats is nil (can happen during session warmup or reuse)
 	if stats == nil {
-		r.logger.Debug("dispatchCallback: stats is nil, skipping event processing",
-			"type", msg.Type, "subtype", msg.Subtype)
+		r.logger.Debug("dispatchCallback: stats is nil, skipping", "type", msg.Type, "subtype", msg.Subtype)
 		return nil
 	}
 
-	// Calculate total duration
-	totalDuration := time.Since(stats.StartTime).Milliseconds()
+	totalDur := time.Since(stats.StartTime).Milliseconds()
 
 	switch msg.Type {
 	case "error":
@@ -464,191 +461,167 @@ func (r *Engine) dispatchCallback(msg StreamMessage, callback Callback, stats *S
 			return callback("error", msg.Error)
 		}
 	case "system":
-		// System messages (init, hook_started, hook_response) are already handled
-		// by SessionMonitor for CLI readiness detection. No additional processing needed.
+		// handled by SessionMonitor
 	case "thinking", "status":
-		// Start thinking phase tracking (ended in other cases or by defer)
-		stats.StartThinking()
-		// Ensure thinking is ended even if we return early from this case
-		// Note: if control flows to another case (tool_use, assistant), they will end thinking explicitly
-		defer func() {
-			stats.EndThinking()
-		}()
-
-		for _, block := range msg.GetContentBlocks() {
-			if block.Type == "text" && block.Text != "" {
-				meta := &EventMeta{
-					Status:          "running",
-					TotalDurationMs: totalDuration,
-				}
-				if err := callback("thinking", NewEventWithMeta("thinking", block.Text, meta)); err != nil {
-					return err
-				}
-			}
-		}
+		return r.handleThinkingEvent(msg, callback, stats, totalDur)
 	case "tool_use":
-		// Tool use ends thinking, starts tool execution
-		stats.EndThinking()
-
-		if msg.Name != "" {
-			// Extract tool ID and input from content blocks
-			var toolID string
-			var inputSummary string
-			var filePath string
-			for _, block := range msg.GetContentBlocks() {
-				if block.Type == "tool_use" {
-					toolID = block.ID
-					if block.Input != nil {
-						// Create a human-readable summary of the input
-						inputSummary = SummarizeInput(block.Input)
-
-						// Extract file path for Write/Edit operations
-						if msg.Name == "Write" || msg.Name == "Edit" || msg.Name == "WriteFile" || msg.Name == "EditFile" {
-							if path, ok := block.Input["path"].(string); ok {
-								filePath = path
-							}
-						}
-					}
-				}
-			}
-			stats.RecordToolUse(msg.Name, toolID)
-
-			// Record file modification for Write/Edit tools
-			if filePath != "" {
-				stats.RecordFileModification(filePath)
-			}
-
-			meta := &EventMeta{
-				ToolName:        msg.Name,
-				ToolID:          toolID,
-				Status:          "running",
-				TotalDurationMs: totalDuration,
-				InputSummary:    inputSummary,
-			}
-			r.logger.Debug("Engine: sending tool_use event", "tool_name", msg.Name, "tool_id", toolID)
-			if err := callback("tool_use", NewEventWithMeta("tool_use", msg.Name, meta)); err != nil {
-				return err
-			}
-		}
+		return r.handleToolUseEvent(msg, callback, stats, totalDur)
 	case "tool_result":
-		if msg.Output != "" {
-			durationMs := stats.RecordToolResult()
+		return r.handleToolResultEvent(msg, callback, stats, totalDur)
+	case "message", "content", "text", "delta", "assistant":
+		return r.handleAssistantEvent(msg, callback, stats, totalDur)
+	case "user":
+		return r.handleUserEvent(msg, callback, stats, totalDur)
+	default:
+		return r.handleDefaultEvent(msg, callback, totalDur)
+	}
+	return nil
+}
 
-			// Extract tool ID and name from content blocks for matching with tool_use
-			// tool_result blocks use tool_use_id to reference the corresponding tool_use
-			var toolID string
-			var toolName string
-			for _, block := range msg.GetContentBlocks() {
-				if block.Type == "tool_result" {
-					toolID = block.GetUnifiedToolID()
-					toolName = block.Name // Tool name from content block
-					break
-				}
-			}
-
-			meta := &EventMeta{
-				ToolName:        toolName,
-				ToolID:          toolID,
-				Status:          "success",
-				DurationMs:      durationMs,
-				TotalDurationMs: totalDuration,
-				OutputSummary:   TruncateString(msg.Output, 500),
-			}
-			r.logger.Debug("Engine: sending tool_result event", "tool_name", toolName, "tool_id", toolID, "output_length", len(msg.Output), "duration_ms", durationMs)
-			if err := callback("tool_result", NewEventWithMeta("tool_result", msg.Output, meta)); err != nil {
+func (r *Engine) handleThinkingEvent(msg StreamMessage, callback Callback, stats *SessionStats, totalDur int64) error {
+	stats.StartThinking()
+	defer stats.EndThinking()
+	for _, block := range msg.GetContentBlocks() {
+		if block.Type == "text" && block.Text != "" {
+			meta := &EventMeta{Status: "running", TotalDurationMs: totalDur}
+			if err := callback("thinking", NewEventWithMeta("thinking", block.Text, meta)); err != nil {
 				return err
 			}
 		}
-	case "message", "content", "text", "delta", "assistant":
-		// Assistant message starts generation phase
-		r.logger.Debug("dispatchCallback: processing assistant message",
-			"type", msg.Type,
-			"has_message", msg.Message != nil,
-			"has_direct_content", len(msg.Content) > 0,
-			"blocks_count", len(msg.GetContentBlocks()))
-		stats.EndThinking()
-		stats.StartGeneration()
+	}
+	return nil
+}
 
-		for _, block := range msg.GetContentBlocks() {
-			if block.Type == "text" && block.Text != "" {
-				if err := callback("answer", NewEventWithMeta("answer", block.Text, &EventMeta{TotalDurationMs: totalDuration})); err != nil {
-					return err
-				}
-			} else if block.Type == "tool_use" && block.Name != "" {
-				// Tool use is nested inside assistant message content
-				// End generation when tool is about to be used
-				stats.EndGeneration()
+func (r *Engine) handleToolUseEvent(msg StreamMessage, callback Callback, stats *SessionStats, totalDur int64) error {
+	stats.EndThinking()
+	if msg.Name == "" {
+		return nil
+	}
 
-				r.logger.Debug("Engine: processing tool_use block", "tool_name", block.Name, "tool_id", block.ID)
-
-				stats.RecordToolUse(block.Name, block.ID)
-
-				// Record file modification for Write/Edit tools
-				if block.Name == "Write" || block.Name == "Edit" || block.Name == "WriteFile" || block.Name == "EditFile" {
-					if block.Input != nil {
-						if path, ok := block.Input["path"].(string); ok {
-							stats.RecordFileModification(path)
-						}
+	var toolID, inputSummary, filePath string
+	for _, block := range msg.GetContentBlocks() {
+		if block.Type == "tool_use" {
+			toolID = block.ID
+			if block.Input != nil {
+				inputSummary = SummarizeInput(block.Input)
+				if msg.Name == "Write" || msg.Name == "Edit" || msg.Name == "WriteFile" || msg.Name == "EditFile" {
+					if path, ok := block.Input["path"].(string); ok {
+						filePath = path
 					}
 				}
-
-				meta := &EventMeta{
-					ToolName:        block.Name,
-					ToolID:          block.ID,
-					Status:          "running",
-					TotalDurationMs: totalDuration,
-					InputSummary:    SummarizeInput(block.Input),
-				}
-				if err := callback("tool_use", NewEventWithMeta("tool_use", block.Name, meta)); err != nil {
-					return err
-				}
-				r.logger.Debug("Engine: tool_use callback completed", "tool_name", block.Name, "tool_id", block.ID)
 			}
 		}
-	case "user":
-		// Tool results come as type:"user" with nested tool_result blocks
-		for _, block := range msg.GetContentBlocks() {
-			if block.Type != "tool_result" {
-				continue
+	}
+	stats.RecordToolUse(msg.Name, toolID)
+	if filePath != "" {
+		stats.RecordFileModification(filePath)
+	}
+
+	meta := &EventMeta{
+		ToolName:        msg.Name,
+		ToolID:          toolID,
+		Status:          "running",
+		TotalDurationMs: totalDur,
+		InputSummary:    inputSummary,
+	}
+	r.logger.Debug("Engine: sending tool_use event", "tool_name", msg.Name, "tool_id", toolID)
+	return callback("tool_use", NewEventWithMeta("tool_use", msg.Name, meta))
+}
+
+func (r *Engine) handleToolResultEvent(msg StreamMessage, callback Callback, stats *SessionStats, totalDur int64) error {
+	if msg.Output == "" {
+		return nil
+	}
+
+	durationMs := stats.RecordToolResult()
+	var toolID, toolName string
+	for _, block := range msg.GetContentBlocks() {
+		if block.Type == "tool_result" {
+			toolID = block.GetUnifiedToolID()
+			toolName = block.Name
+			break
+		}
+	}
+
+	meta := &EventMeta{
+		ToolName:        toolName,
+		ToolID:          toolID,
+		Status:          "success",
+		DurationMs:      durationMs,
+		TotalDurationMs: totalDur,
+		OutputSummary:   TruncateString(msg.Output, 500),
+	}
+	r.logger.Debug("Engine: sending tool_result event", "tool_name", toolName, "tool_id", toolID, "duration_ms", durationMs)
+	return callback("tool_result", NewEventWithMeta("tool_result", msg.Output, meta))
+}
+
+func (r *Engine) handleAssistantEvent(msg StreamMessage, callback Callback, stats *SessionStats, totalDur int64) error {
+	r.logger.Debug("dispatchCallback: processing assistant message", "type", msg.Type, "blocks_count", len(msg.GetContentBlocks()))
+	stats.EndThinking()
+	stats.StartGeneration()
+
+	for _, block := range msg.GetContentBlocks() {
+		if block.Type == "text" && block.Text != "" {
+			if err := callback("answer", NewEventWithMeta("answer", block.Text, &EventMeta{TotalDurationMs: totalDur})); err != nil {
+				return err
 			}
+		} else if block.Type == "tool_use" && block.Name != "" {
+			stats.EndGeneration()
+			stats.RecordToolUse(block.Name, block.ID)
 
-			durationMs := stats.RecordToolResult()
-
-			// tool_result blocks use tool_use_id to reference the corresponding tool_use
-			// The Name field is typically empty in tool_result blocks
-			toolID := block.GetUnifiedToolID()
+			if block.Name == "Write" || block.Name == "Edit" || block.Name == "WriteFile" || block.Name == "EditFile" {
+				if block.Input != nil {
+					if path, ok := block.Input["path"].(string); ok {
+						stats.RecordFileModification(path)
+					}
+				}
+			}
 
 			meta := &EventMeta{
-				ToolID:          toolID,     // Use tool_use_id for matching
-				ToolName:        block.Name, // May be empty for tool_result blocks
-				Status:          "success",
-				DurationMs:      durationMs,
-				TotalDurationMs: totalDuration,
-				OutputSummary:   TruncateString(block.Content, 500),
+				ToolName:        block.Name,
+				ToolID:          block.ID,
+				Status:          "running",
+				TotalDurationMs: totalDur,
+				InputSummary:    SummarizeInput(block.Input),
 			}
-			r.logger.Debug("Engine: sending tool_result event from user message", "tool_name", block.Name, "tool_id", toolID, "tool_use_id", block.ToolUseID, "duration_ms", durationMs)
-			if err := callback("tool_result", NewEventWithMeta("tool_result", block.Content, meta)); err != nil {
+			if err := callback("tool_use", NewEventWithMeta("tool_use", block.Name, meta)); err != nil {
 				return err
 			}
 		}
-	default:
-		// Log unknown message type for debugging
-		r.logger.Warn("Engine: unknown message type",
-			"type", msg.Type,
-			"role", msg.Role,
-			"name", msg.Name,
-			"has_content", len(msg.Content) > 0,
-			"has_message", msg.Message != nil,
-			"has_error", msg.Error != "",
-			"has_output", msg.Output != "")
+	}
+	return nil
+}
 
-		// Try to extract any text content (non-critical - use safe callback)
-		callbackSafe := WrapSafe(r.logger, callback)
-		for _, block := range msg.GetContentBlocks() {
-			if block.Type == "text" && block.Text != "" {
-				if callbackSafe != nil {
-					_ = callbackSafe("answer", NewEventWithMeta("answer", block.Text, &EventMeta{TotalDurationMs: totalDuration}))
-				}
+func (r *Engine) handleUserEvent(msg StreamMessage, callback Callback, stats *SessionStats, totalDur int64) error {
+	for _, block := range msg.GetContentBlocks() {
+		if block.Type != "tool_result" {
+			continue
+		}
+		durationMs := stats.RecordToolResult()
+		toolID := block.GetUnifiedToolID()
+		meta := &EventMeta{
+			ToolID:          toolID,
+			ToolName:        block.Name,
+			Status:          "success",
+			DurationMs:      durationMs,
+			TotalDurationMs: totalDur,
+			OutputSummary:   TruncateString(block.Content, 500),
+		}
+		r.logger.Debug("Engine: sending tool_result event from user message", "tool_name", block.Name, "tool_id", toolID, "duration_ms", durationMs)
+		if err := callback("tool_result", NewEventWithMeta("tool_result", block.Content, meta)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *Engine) handleDefaultEvent(msg StreamMessage, callback Callback, totalDur int64) error {
+	r.logger.Warn("Engine: unknown message type", "type", msg.Type, "role", msg.Role)
+	callbackSafe := WrapSafe(r.logger, callback)
+	for _, block := range msg.GetContentBlocks() {
+		if block.Type == "text" && block.Text != "" {
+			if callbackSafe != nil {
+				_ = callbackSafe("answer", NewEventWithMeta("answer", block.Text, &EventMeta{TotalDurationMs: totalDur}))
 			}
 		}
 	}

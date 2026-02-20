@@ -208,18 +208,11 @@ func (sm *SessionPool) cleanupSessionLocked(sessionID string) error {
 
 // startSession initializes the OS process (Cold Start). Caller must hold lock.
 func (sm *SessionPool) startSession(ctx context.Context, sessionID string, cfg Config) (*Session, error) {
-	// Early exit if request context is already cancelled
 	if ctx.Err() != nil {
 		return nil, fmt.Errorf("request context cancelled: %w", ctx.Err())
 	}
 
-	cliPath := sm.cliPath
-
-	// Prepare context with cancellation.
-	// We intentionally use context.Background() instead of the request ctx
-	// because the session should outlive the HTTP request that created it.
 	sessCtx, cancel := context.WithCancel(context.Background())
-	// Ensure cancel is called only on error paths to keep the process alive on success
 	var success bool
 	defer func() {
 		if !success {
@@ -227,139 +220,44 @@ func (sm *SessionPool) startSession(ctx context.Context, sessionID string, cfg C
 		}
 	}()
 
-	// Use a startup timeout to prevent indefinite hangs during process start
-	// We monitor startup in a goroutine and cancel if it takes too long
 	startupCtx, startupCancel := context.WithTimeout(ctx, 30*time.Second)
 	defer startupCancel()
 
-	// Channel to signal successful startup or failure
 	startedCh := make(chan error, 1)
-
-	// Ensure we signal completion even on early return
-	// This prevents goroutine leak if function returns before startup completes
 	defer close(startedCh)
 
-	// Goroutine to monitor startup timeout
-	// If startup takes longer than the timeout, cancel the session
-	go func() {
-		select {
-		case err := <-startedCh:
-			if err != nil {
-				cancel()
-			}
-		case <-startupCtx.Done():
-			select {
-			case err := <-startedCh:
-				if err != nil {
-					cancel()
-				}
-			default:
-				// Startup timed out and no success signal was sent
-				cancel()
-			}
-		}
-	}()
+	go monitorStartup(startupCtx, startedCh, cancel)
 
-	// Deterministic UUID generation mapping from the string sessionID
-	// We mix in the Engine's Namespace to ensure proper isolation across applications.
-	// This ensures that Claude CLI always receives a valid UUID format,
-	// while callers can use arbitrary strings.
 	uniqueStr := fmt.Sprintf("%s:session:%s", sm.opts.Namespace, sessionID)
 	ccSessionID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(uniqueStr)).String()
-
-	// Build arguments
-	// We always force --output-format stream-json and --print
-	args := []string{
-		"--print",
-		"--verbose",
-		"--output-format", "stream-json",
-		"--input-format", "stream-json",
-	}
-
-	// Create a contextual logger with standard fields for all subsequent logs
 	sessLog := sm.logger.With(
 		"namespace", sm.opts.Namespace,
 		"session_id", sessionID,
 		"cc_session_id", ccSessionID,
 	)
 
-	// 0. Session Persistence Logic (Marker Lock Files)
-	// Claude CLI throws "already in use" if we pass --session-id for an existing session in its DB.
-	// We use an external marker file to track if HotPlex has created this ccSessionID before.
-	markerPath := filepath.Join(sm.markerDir, ccSessionID+".lock")
-	if _, err := os.Stat(markerPath); err == nil {
-		// Marker exists -> Session was previously created in Claude's local DB. We MUST resume.
-		args = append(args, "--resume", ccSessionID)
-		sessLog.Info("Resuming existing persistent CLI session")
-	} else {
-		// Marker missing -> Brand new session.
-		args = append(args, "--session-id", ccSessionID)
-		// Touch the lock file for future restarts
-		_ = os.WriteFile(markerPath, []byte(""), 0644)
-		sessLog.Info("Creating new persistent CLI session")
-	}
-
-	// 1. Permission Mode (Strictly enforced from EngineOptions)
-	if sm.opts.PermissionMode != "" {
-		args = append(args, "--permission-mode", sm.opts.PermissionMode)
-	}
-
-	// 2. Allowed Tools (Engine-level constraint)
-	if len(sm.opts.AllowedTools) > 0 {
-		args = append(args, "--allowed-tools", strings.Join(sm.opts.AllowedTools, ","))
-	}
-
-	// 3. Disallowed Tools (Engine-level constraint)
-	if len(sm.opts.DisallowedTools) > 0 {
-		args = append(args, "--disallowed-tools", strings.Join(sm.opts.DisallowedTools, ","))
-	}
-
-	// 4. System Prompt (Base Engine Persona Only)
-	if sm.opts.BaseSystemPrompt != "" {
-		args = append(args, "--append-system-prompt", sm.opts.BaseSystemPrompt)
-	}
-
-	cmd := exec.CommandContext(sessCtx, cliPath, args...)
+	args := sm.buildCLIArgs(ccSessionID, sessLog)
+	cmd := exec.CommandContext(sessCtx, sm.cliPath, args...)
 	cmd.Dir = cfg.WorkDir
 	cmd.Env = append(os.Environ(), "CLAUDE_DISABLE_TELEMETRY=1")
 	setupCmdSysProcAttr(cmd)
 
-	// Create pipes with proper cleanup on error paths
-	var stdin io.WriteCloser
-	var stdout, stderr io.ReadCloser
-
-	stdin, err := cmd.StdinPipe()
+	stdin, stdout, stderr, err := setupCmdPipes(cmd)
 	if err != nil {
 		cancel()
-		return nil, fmt.Errorf("stdin pipe: %w", err)
-	}
-
-	stdout, err = cmd.StdoutPipe()
-	if err != nil {
-		_ = stdin.Close() //nolint:errcheck // cleanup on error path
-		cancel()
-		return nil, fmt.Errorf("stdout pipe: %w", err)
-	}
-
-	stderr, err = cmd.StderrPipe()
-	if err != nil {
-		_ = stdout.Close() //nolint:errcheck // cleanup on error path
-		_ = stdin.Close()  //nolint:errcheck // cleanup on error path
-		cancel()
-		return nil, fmt.Errorf("stderr pipe: %w", err)
+		return nil, err
 	}
 
 	if err := cmd.Start(); err != nil {
-		startedCh <- err // Signal startup failed
+		startedCh <- err
 		return nil, fmt.Errorf("cmd start: %w", err)
 	}
 
-	// Signal that startup succeeded
 	startedCh <- nil
 
 	sessLog.Info("OS Process started (Cold Start)",
 		"pid", cmd.Process.Pid,
-		"pgid", cmd.Process.Pid) // PGID is the same as PID since we use Setpgid: true
+		"pgid", cmd.Process.Pid)
 
 	sess := &Session{
 		ID:          sessionID,
@@ -373,28 +271,96 @@ func (sm *SessionPool) startSession(ctx context.Context, sessionID string, cfg C
 		CreatedAt:   time.Now(),
 		LastActive:  time.Now(),
 		Status:      SessionStatusStarting,
-		logger:      sessLog, // Pre-bound contextual logger with namespace/session_id/cc_session_id
+		logger:      sessLog,
 	}
 
-	// Start background readers for multiplexing
 	go sess.readStdout()
 	go sess.readStderr()
 
-	// Monitor process exit to prevent zombies and log unexpected crashes
 	go func() {
 		err := cmd.Wait()
-		// Check if the exit was unexpected (session not already closing/dead)
 		if sess.GetStatus() != SessionStatusDead && sessLog != nil {
-			sessLog.Warn("Session OS process exited unexpectedly",
-				"exit_error", err)
+			sessLog.Warn("Session OS process exited unexpectedly", "exit_error", err)
 		}
 	}()
 
-	// Start status transition monitor: Starting -> Ready
 	sess.waitForReady(sessCtx, defaultReadyTimeout)
-
 	success = true
 	return sess, nil
+}
+
+func (sm *SessionPool) buildCLIArgs(ccSessionID string, sessLog *slog.Logger) []string {
+	args := []string{
+		"--print",
+		"--verbose",
+		"--output-format", "stream-json",
+		"--input-format", "stream-json",
+	}
+
+	markerPath := filepath.Join(sm.markerDir, ccSessionID+".lock")
+	if _, err := os.Stat(markerPath); err == nil {
+		args = append(args, "--resume", ccSessionID)
+		sessLog.Info("Resuming existing persistent CLI session")
+	} else {
+		args = append(args, "--session-id", ccSessionID)
+		_ = os.WriteFile(markerPath, []byte(""), 0644)
+		sessLog.Info("Creating new persistent CLI session")
+	}
+
+	if sm.opts.PermissionMode != "" {
+		args = append(args, "--permission-mode", sm.opts.PermissionMode)
+	}
+	if len(sm.opts.AllowedTools) > 0 {
+		args = append(args, "--allowed-tools", strings.Join(sm.opts.AllowedTools, ","))
+	}
+	if len(sm.opts.DisallowedTools) > 0 {
+		args = append(args, "--disallowed-tools", strings.Join(sm.opts.DisallowedTools, ","))
+	}
+	if sm.opts.BaseSystemPrompt != "" {
+		args = append(args, "--append-system-prompt", sm.opts.BaseSystemPrompt)
+	}
+
+	return args
+}
+
+func setupCmdPipes(cmd *exec.Cmd) (io.WriteCloser, io.ReadCloser, io.ReadCloser, error) {
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("stdin pipe: %w", err)
+	}
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		_ = stdin.Close()
+		return nil, nil, nil, fmt.Errorf("stdout pipe: %w", err)
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		_ = stdout.Close()
+		_ = stdin.Close()
+		return nil, nil, nil, fmt.Errorf("stderr pipe: %w", err)
+	}
+
+	return stdin, stdout, stderr, nil
+}
+
+func monitorStartup(startupCtx context.Context, startedCh <-chan error, cancel context.CancelFunc) {
+	select {
+	case err := <-startedCh:
+		if err != nil {
+			cancel()
+		}
+	case <-startupCtx.Done():
+		select {
+		case err := <-startedCh:
+			if err != nil {
+				cancel()
+			}
+		default:
+			cancel()
+		}
+	}
 }
 
 // isAliveLocked checks if the process is still running. Caller must hold lock.
