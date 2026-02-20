@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.0] - 2026-02-20
+
+### Added
+- **Developer Experience (DX) Suite**: Added a colorized, self-documenting `Makefile` for streamlined development.
+- **Robust Git Hooks**: Implemented a comprehensive suite of local Git hooks (`pre-commit`, `commit-msg`, `pre-push`) to ensure code quality and Conventional Commit adherence.
+- **GitHub Metadata Optimization**: Enhanced repository with SEO-friendly descriptions, topics, and performance-focused taglines.
+
+### Fixed
+- **CI/CD Reliability**: Downgraded Go version to 1.24 across all workflows and `go.mod` to resolve `golangci-lint` compatibility issues.
+- **Terminal Compatibility**: Standardized script outputs using `printf` to resolve garbled emoji characters on various terminal emulators.
+
+
 ## [v0.4.0] - 2026-02-20
 
 ### Added
