@@ -25,9 +25,26 @@ An advanced Node.js demo that mirrors the Full SDK features over the WebSocket p
 ## 🚀 How to Run
 
 ### Prerequisite: Claude Code CLI
-Ensure you have the `claude` CLI installed and authenticated:
+Ensure you have the `claude` CLI installed and authenticated. 
+
+#### Recommended (Native):
 ```bash
+# macOS / Linux / WSL
+curl -fsSL https://claude.ai/install.sh | bash
+
+# Windows (PowerShell)
+irm https://claude.ai/install.ps1 | iex
+```
+
+#### Alternatives:
+```bash
+brew install claude-code
+# OR
 npm install -g @anthropic-ai/claude-code
+```
+
+Run authentication:
+```bash
 claude auth
 ```
 

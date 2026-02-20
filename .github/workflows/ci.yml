@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Setup Mock Claude CLI
+        run: |
+          mkdir -p $HOME/.local/bin
+          echo '#!/bin/bash' > $HOME/.local/bin/claude
+          echo 'echo "claude version 0.0.0-mock"' >> $HOME/.local/bin/claude
+          chmod +x $HOME/.local/bin/claude
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Verify CLI Mock
+        run: claude --version
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Run Tests
+        run: go test -v -race ./...
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: false
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m

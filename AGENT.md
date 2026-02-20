@@ -63,7 +63,7 @@ When looking for where to make changes, follow this map:
 - `internal/server/`: **The Adapters.**
   - `websocket.go`: HTTP to WebSocket upgrade and JSON RPC framing over WS.
 - `docs/`: **Knowledge Base.**
-  - `architecture.md`: Visual diagrams and deep architectural reasoning.
+  - `architecture.md`: `@docs/architecture.md` (Design & Diagrams)
 
 ---
 

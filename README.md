@@ -50,7 +50,14 @@ HotPlex is designed with a two-tier architecture:
 If you just want to run the server and connect to it from a frontend or Python script:
 
 ```bash
-# Ensure Claude Code is installed globally
+# Install Claude Code (Recommended: Native Installer)
+# macOS / Linux / WSL:
+curl -fsSL https://claude.ai/install.sh | bash
+
+# OR via Homebrew:
+brew install claude-code
+
+# OR via NPM (legacy):
 npm install -g @anthropic-ai/claude-code
 
 # Build and run the daemon
@@ -60,8 +67,14 @@ go build -o hotplexd main.go
 ```
 Server runs on `ws://localhost:8080/ws/v1/agent`. Check `_examples/websocket_client/client.js` for an integration demo.
 
-### 2. Using the Go SDK Native Integration
+### 2. Native Go SDK Integration
 
+Install the library:
+```bash
+go get github.com/hrygo/hotplex
+```
+
+Import and use:
 ```go
 import "github.com/hrygo/hotplex/pkg/hotplex"
 

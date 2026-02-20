@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.0] - 2026-02-20
+
+### Added
+- **CI/CD Pipelines**: Integrated GitHub Actions for automated Builds, Tests (with Race detection), and Linters.
+- **Automated Releases**: Configured `GoReleaser` to automatically build and release multi-platform binaries (Linux, macOS, Windows) upon tag push.
+- **Community Standards**: Added `LICENSE` (MIT), `CONTRIBUTING.md`, `SECURITY.md`, and Issue/PR templates to follow open-source best practices.
+- **Documentation Localization**: Added a full English version of the architecture design document (`docs/architecture.md`) with cross-language navigation.
+- **Unit Testing**: Added comprehensive unit tests for the `Danger Detector` (WAF) to verify security boundaries.
+
+### Changed
+- **Installation Docs**: Updated README to reflect Claude Code's native installation methods and official `go get` SDK integration.
+- **Reference Syntax**: Standardized `AGENT.md` to use relative paths and updated reference syntax for better AI readability.
+- **Architecture Files**: Renamed `architecture.md` to `architecture_zh.md` for the Chinese version.
+
+
 ## [v0.3.0] - 2026-02-20
 
 ### Added

@@ -50,7 +50,14 @@ HotPlex 采用两层架构设计：
 如果你想直接运行服务器并通过前端或脚本连接：
 
 ```bash
-# 确保已全局安装 Claude Code
+# 安装 Claude Code (推荐：官方原生安装脚本)
+# macOS / Linux / WSL:
+curl -fsSL https://claude.ai/install.sh | bash
+
+# 或通过 Homebrew 安装:
+brew install claude-code
+
+# 或通过 NPM 安装 (传统方式):
 npm install -g @anthropic-ai/claude-code
 
 # 编译并运行守护进程
@@ -62,6 +69,12 @@ go build -o hotplexd main.go
 
 ### 2. 使用 Go SDK 原生集成
 
+安装依赖包：
+```bash
+go get github.com/hrygo/hotplex
+```
+
+并在代码中引入：
 ```go
 import "github.com/hrygo/hotplex/pkg/hotplex"
 
