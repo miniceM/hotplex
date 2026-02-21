@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"time"
+
+	"github.com/hrygo/hotplex/provider"
 )
 
 // SessionStatus defines the current state of a session.
@@ -60,6 +62,10 @@ type EngineOptions struct {
 	// AdminToken is the secret required to toggle security bypass mode.
 	// If empty, bypass will be disabled for security.
 	AdminToken string
+
+	// Provider is the AI CLI provider (e.g., Claude Code, OpenCode).
+	// If nil, defaults to ClaudeCodeProvider.
+	Provider provider.Provider
 }
 
 // SessionManager defines the behavioral interface for managing a process pool.

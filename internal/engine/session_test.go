@@ -6,11 +6,23 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/hrygo/hotplex/provider"
 )
 
 // newTestLogger creates a logger for testing
 func newTestLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(os.Stdout, nil))
+}
+
+// newTestProvider creates a ClaudeCodeProvider for testing
+func newTestProvider(t *testing.T) provider.Provider {
+	t.Helper()
+	prv, err := provider.NewClaudeCodeProvider(provider.ProviderConfig{}, newTestLogger())
+	if err != nil {
+		t.Fatalf("Failed to create test provider: %v", err)
+	}
+	return prv
 }
 
 func TestSessionStatus_String(t *testing.T) {
@@ -116,7 +128,8 @@ func TestSession_WriteInput_InvalidJSON(t *testing.T) {
 
 func TestSessionPool_GetSession(t *testing.T) {
 	logger := newTestLogger()
-	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{Namespace: "test"}, "/tmp")
+	prv := newTestProvider(t)
+	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{Namespace: "test"}, "/tmp", prv)
 
 	// Get nonexistent session
 	_, ok := pool.GetSession("nonexistent")
@@ -127,7 +140,8 @@ func TestSessionPool_GetSession(t *testing.T) {
 
 func TestSessionPool_ListActiveSessions(t *testing.T) {
 	logger := newTestLogger()
-	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{Namespace: "test"}, "/tmp")
+	prv := newTestProvider(t)
+	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{Namespace: "test"}, "/tmp", prv)
 
 	// Should return empty list
 	sessions := pool.ListActiveSessions()
@@ -138,7 +152,8 @@ func TestSessionPool_ListActiveSessions(t *testing.T) {
 
 func TestSessionPool_TerminateSession_Nonexistent(t *testing.T) {
 	logger := newTestLogger()
-	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{Namespace: "test"}, "/tmp")
+	prv := newTestProvider(t)
+	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{Namespace: "test"}, "/tmp", prv)
 
 	// Terminating nonexistent session should be a no-op
 	err := pool.TerminateSession("nonexistent")
@@ -149,7 +164,8 @@ func TestSessionPool_TerminateSession_Nonexistent(t *testing.T) {
 
 func TestSessionPool_Shutdown(t *testing.T) {
 	logger := newTestLogger()
-	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{Namespace: "test"}, "/tmp")
+	prv := newTestProvider(t)
+	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{Namespace: "test"}, "/tmp", prv)
 
 	// Shutdown should be safe to call
 	pool.Shutdown()
@@ -281,7 +297,8 @@ func TestSession_isAliveLocked(t *testing.T) {
 
 func TestSessionPool_Shutdown_WithSessions(t *testing.T) {
 	logger := newTestLogger()
-	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{Namespace: "test"}, "/tmp")
+	prv := newTestProvider(t)
+	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{Namespace: "test"}, "/tmp", prv)
 
 	// Add mock sessions directly to the pool
 	pool.mu.Lock()
@@ -308,7 +325,8 @@ func TestSessionPool_Shutdown_WithSessions(t *testing.T) {
 
 func TestSessionPool_CleanupSessionLocked(t *testing.T) {
 	logger := newTestLogger()
-	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{Namespace: "test"}, "/tmp")
+	prv := newTestProvider(t)
+	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{Namespace: "test"}, "/tmp", prv)
 
 	// Add mock session
 	pool.mu.Lock()
@@ -339,7 +357,8 @@ func TestSessionPool_CleanupSessionLocked(t *testing.T) {
 
 func TestSessionPool_CleanupSessionLocked_NonExistent(t *testing.T) {
 	logger := newTestLogger()
-	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{Namespace: "test"}, "/tmp")
+	prv := newTestProvider(t)
+	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{Namespace: "test"}, "/tmp", prv)
 
 	// Cleanup non-existent session should return nil
 	pool.mu.Lock()
@@ -355,7 +374,8 @@ func TestSessionPool_CleanupSessionLocked_NonExistent(t *testing.T) {
 
 func TestSessionPool_Shutdown_WithCallback(t *testing.T) {
 	logger := newTestLogger()
-	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{Namespace: "test"}, "/tmp")
+	prv := newTestProvider(t)
+	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{Namespace: "test"}, "/tmp", prv)
 
 	callbackCalled := false
 	cb := func(eventType string, data any) error {
@@ -384,7 +404,8 @@ func TestSessionPool_Shutdown_WithCallback(t *testing.T) {
 
 func TestSessionPool_ListActiveSessions_Multiple(t *testing.T) {
 	logger := newTestLogger()
-	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{Namespace: "test"}, "/tmp")
+	prv := newTestProvider(t)
+	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{Namespace: "test"}, "/tmp", prv)
 
 	// Initially empty
 	sessions := pool.ListActiveSessions()

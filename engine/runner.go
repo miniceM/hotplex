@@ -15,6 +15,7 @@ import (
 	"github.com/hrygo/hotplex/event"
 	intengine "github.com/hrygo/hotplex/internal/engine"
 	"github.com/hrygo/hotplex/internal/security"
+	"github.com/hrygo/hotplex/provider"
 	"github.com/hrygo/hotplex/types"
 )
 
@@ -31,6 +32,7 @@ type Engine struct {
 	opts           EngineOptions
 	cliPath        string
 	logger         *slog.Logger
+	provider       provider.Provider
 	manager        intengine.SessionManager
 	dangerDetector *security.Detector
 	// Session stats for the last execution (thread-safe)
@@ -40,11 +42,6 @@ type Engine struct {
 
 // NewEngine creates a new HotPlex Engine instance.
 func NewEngine(options EngineOptions) (*Engine, error) {
-	cliPath, err := exec.LookPath("claude")
-	if err != nil {
-		return nil, fmt.Errorf("claude Code CLI not found: %w", err)
-	}
-
 	logger := options.Logger
 	if logger == nil {
 		logger = slog.Default()
@@ -61,6 +58,26 @@ func NewEngine(options EngineOptions) (*Engine, error) {
 		options.Namespace = "default"
 	}
 
+	// Use provided Provider or create default ClaudeCodeProvider
+	prv := options.Provider
+	if prv == nil {
+		var err error
+		prv, err = provider.NewClaudeCodeProvider(provider.ProviderConfig{
+			DefaultPermissionMode: options.PermissionMode,
+			AllowedTools:          options.AllowedTools,
+			DisallowedTools:       options.DisallowedTools,
+		}, logger)
+		if err != nil {
+			return nil, fmt.Errorf("create default provider: %w", err)
+		}
+	}
+
+	// Validate CLI binary via Provider
+	cliPath, err := prv.ValidateBinary()
+	if err != nil {
+		return nil, fmt.Errorf("cli not found: %w", err)
+	}
+
 	// Initialize danger detector for security
 	dangerDetector := security.NewDetector(logger)
 	if options.AdminToken != "" {
@@ -71,7 +88,8 @@ func NewEngine(options EngineOptions) (*Engine, error) {
 		opts:           options,
 		cliPath:        cliPath,
 		logger:         logger,
-		manager:        intengine.NewSessionPool(logger, options.IdleTimeout, options, cliPath),
+		provider:       prv,
+		manager:        intengine.NewSessionPool(logger, options.IdleTimeout, options, cliPath, prv),
 		dangerDetector: dangerDetector,
 	}, nil
 }

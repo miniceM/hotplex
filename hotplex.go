@@ -4,6 +4,7 @@ package hotplex
 import (
 	"github.com/hrygo/hotplex/engine"
 	"github.com/hrygo/hotplex/event"
+	"github.com/hrygo/hotplex/provider"
 	"github.com/hrygo/hotplex/types"
 )
 
@@ -58,6 +59,38 @@ var (
 	ErrInvalidConfig = types.ErrInvalidConfig
 )
 
+// ===== Provider Types =====
+
+// Provider defines the interface for AI CLI agent providers.
+type Provider = provider.Provider
+
+// ProviderConfig defines the configuration for a specific provider instance.
+type ProviderConfig = provider.ProviderConfig
+
+// ProviderSessionOptions configures a provider session.
+type ProviderSessionOptions = provider.ProviderSessionOptions
+
+// ProviderEvent represents a normalized event from any AI CLI provider.
+type ProviderEvent = provider.ProviderEvent
+
+// ProviderMeta contains metadata about a provider.
+type ProviderMeta = provider.ProviderMeta
+
+// ProviderFeatures describes the capabilities of a provider.
+type ProviderFeatures = provider.ProviderFeatures
+
+// ProviderType defines the type of AI CLI provider.
+type ProviderType = provider.ProviderType
+
+// ClaudeCodeProvider implements the Provider interface for Claude Code CLI.
+type ClaudeCodeProvider = provider.ClaudeCodeProvider
+
+// Provider constants
+const (
+	ProviderTypeClaudeCode = provider.ProviderTypeClaudeCode
+	ProviderTypeOpenCode   = provider.ProviderTypeOpenCode
+)
+
 // ===== Functions =====
 
 var (
@@ -71,4 +104,6 @@ var (
 	TruncateString = types.TruncateString
 	// SummarizeInput creates a summary of input data.
 	SummarizeInput = types.SummarizeInput
+	// NewClaudeCodeProvider creates a new Claude Code provider instance.
+	NewClaudeCodeProvider = provider.NewClaudeCodeProvider
 )

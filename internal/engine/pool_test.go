@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"testing"
 	"time"
+
+	"github.com/hrygo/hotplex/provider"
 )
 
 func TestIsExpectedCloseError(t *testing.T) {
@@ -118,13 +120,22 @@ func TestMonitorStartup_Timeout(t *testing.T) {
 
 func TestSessionPool_buildCLIArgs(t *testing.T) {
 	logger := newTestLogger()
+	prv, err := provider.NewClaudeCodeProvider(provider.ProviderConfig{
+		DefaultPermissionMode: "bypass-permissions",
+		AllowedTools:          []string{"bash", "edit"},
+		DisallowedTools:       []string{"dangerous"},
+	}, logger)
+	if err != nil {
+		t.Fatalf("Failed to create provider: %v", err)
+	}
+
 	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{
 		Namespace:        "test",
 		PermissionMode:   "bypass-permissions",
 		AllowedTools:     []string{"bash", "edit"},
 		DisallowedTools:  []string{"dangerous"},
 		BaseSystemPrompt: "You are helpful",
-	}, "/tmp/claude")
+	}, "/tmp/claude", prv)
 
 	args := pool.buildCLIArgs("test-session-id", logger)
 
@@ -152,10 +163,15 @@ func TestSessionPool_buildCLIArgs(t *testing.T) {
 func TestSessionPool_buildCLIArgs_Resume(t *testing.T) {
 	logger := newTestLogger()
 
+	prv, err := provider.NewClaudeCodeProvider(provider.ProviderConfig{}, logger)
+	if err != nil {
+		t.Fatalf("Failed to create provider: %v", err)
+	}
+
 	// Create pool with marker directory
 	pool := NewSessionPool(logger, 30*time.Minute, EngineOptions{
 		Namespace: "test",
-	}, "/tmp/claude")
+	}, "/tmp/claude", prv)
 
 	// Create a marker file to simulate existing session
 	markerPath := pool.markerDir + "/existing-session.lock"

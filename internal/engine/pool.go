@@ -8,12 +8,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/hrygo/hotplex/internal/sys"
+	"github.com/hrygo/hotplex/provider"
 )
 
 // SessionPool implements the SessionManager as a thread-safe singleton.
@@ -26,6 +26,7 @@ type SessionPool struct {
 	timeout      time.Duration // Time after which an idle session is eligible for termination
 	opts         EngineOptions // Global constraints shared by all sessions in the pool
 	cliPath      string        // Resolved path to the CLI binary
+	provider     provider.Provider
 	done         chan struct{} // Internal signal for shutting down background workers
 	shutdownOnce sync.Once     // Ensures Shutdown is only executed once
 	markerDir    string        // Local filesystem path storing session persistence markers
@@ -33,7 +34,7 @@ type SessionPool struct {
 }
 
 // NewSessionPool creates a new session manager.
-func NewSessionPool(logger *slog.Logger, timeout time.Duration, opts EngineOptions, cliPath string) *SessionPool {
+func NewSessionPool(logger *slog.Logger, timeout time.Duration, opts EngineOptions, cliPath string, prv provider.Provider) *SessionPool {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -54,6 +55,7 @@ func NewSessionPool(logger *slog.Logger, timeout time.Duration, opts EngineOptio
 		timeout:   timeout,
 		opts:      opts,
 		cliPath:   cliPath,
+		provider:  prv,
 		done:      make(chan struct{}),
 		markerDir: markerDir,
 		pending:   make(map[string]chan struct{}),
@@ -269,37 +271,28 @@ func (sm *SessionPool) startSession(ctx context.Context, sessionID string, cfg S
 }
 
 func (sm *SessionPool) buildCLIArgs(ccSessionID string, sessLog *slog.Logger) []string {
-	args := []string{
-		"--print",
-		"--verbose",
-		"--output-format", "stream-json",
-		"--input-format", "stream-json",
+	// Build ProviderSessionOptions
+	opts := &provider.ProviderSessionOptions{
+		PermissionMode:   sm.opts.PermissionMode,
+		AllowedTools:     sm.opts.AllowedTools,
+		DisallowedTools:  sm.opts.DisallowedTools,
+		BaseSystemPrompt: sm.opts.BaseSystemPrompt,
+		SessionID:        ccSessionID,
 	}
 
+	// Check if we need to resume
 	markerPath := filepath.Join(sm.markerDir, ccSessionID+".lock")
 	if _, err := os.Stat(markerPath); err == nil {
-		args = append(args, "--resume", ccSessionID)
+		opts.ResumeSession = true
+		opts.ProviderSessionID = ccSessionID
 		sessLog.Info("Resuming existing persistent CLI session")
 	} else {
-		args = append(args, "--session-id", ccSessionID)
+		opts.ProviderSessionID = ccSessionID
 		_ = os.WriteFile(markerPath, []byte(""), 0644)
 		sessLog.Info("Creating new persistent CLI session")
 	}
 
-	if sm.opts.PermissionMode != "" {
-		args = append(args, "--permission-mode", sm.opts.PermissionMode)
-	}
-	if len(sm.opts.AllowedTools) > 0 {
-		args = append(args, "--allowed-tools", strings.Join(sm.opts.AllowedTools, ","))
-	}
-	if len(sm.opts.DisallowedTools) > 0 {
-		args = append(args, "--disallowed-tools", strings.Join(sm.opts.DisallowedTools, ","))
-	}
-	if sm.opts.BaseSystemPrompt != "" {
-		args = append(args, "--append-system-prompt", sm.opts.BaseSystemPrompt)
-	}
-
-	return args
+	return sm.provider.BuildCLIArgs(ccSessionID, opts)
 }
 
 func setupCmdPipes(cmd *exec.Cmd) (io.WriteCloser, io.ReadCloser, io.ReadCloser, error) {
