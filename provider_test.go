@@ -568,14 +568,3 @@ func TestMergeProviderConfigs_ExplicitDisable(t *testing.T) {
 		t.Error("Expected Enabled=true when overlay.Enabled=true")
 	}
 }
-
-// Helper function
-func assertContains(t *testing.T, slice []string, item string) {
-	t.Helper()
-	for _, s := range slice {
-		if s == item {
-			return
-		}
-	}
-	t.Errorf("Slice does not contain %q: %v", item, slice)
-}

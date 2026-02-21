@@ -185,15 +185,6 @@ func createTestContextWithTimeout(timeout time.Duration) (context.Context, conte
 	return context.WithTimeout(context.Background(), timeout)
 }
 
-func containsInSlice(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
-}
-
 // Avoid importing os and context in test file
 var osWriteFile = func(name string, data []byte, perm uint32) error {
 	return os.WriteFile(name, data, os.FileMode(perm))

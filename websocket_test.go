@@ -131,10 +131,10 @@ func TestSessionStatsData_JSON_Marshal(t *testing.T) {
 
 	// Verify JSON contains expected fields
 	jsonStr := string(jsonBytes)
-	if !containsStr(jsonStr, "session_id") {
+	if !contains(jsonStr, "session_id") {
 		t.Error("JSON should contain 'session_id'")
 	}
-	if !containsStr(jsonStr, "test-123") {
+	if !contains(jsonStr, "test-123") {
 		t.Error("JSON should contain 'test-123'")
 	}
 }
@@ -155,7 +155,7 @@ func TestDangerBlockEvent_JSON_Marshal(t *testing.T) {
 	}
 
 	jsonStr := string(jsonBytes)
-	if !containsStr(jsonStr, "operation") {
+	if !contains(jsonStr, "operation") {
 		t.Error("JSON should contain 'operation'")
 	}
 }
@@ -199,17 +199,7 @@ func TestEventMeta_JSON(t *testing.T) {
 	}
 
 	jsonStr := string(jsonBytes)
-	if !containsStr(jsonStr, "tool_name") {
+	if !contains(jsonStr, "tool_name") {
 		t.Error("JSON should contain 'tool_name'")
 	}
-}
-
-// Helper
-func containsStr(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

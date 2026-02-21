@@ -3,8 +3,6 @@ package hotplex
 import (
 	"bytes"
 	"io"
-	"log/slog"
-	"os"
 	"os/exec"
 	"testing"
 	"time"
@@ -441,9 +439,4 @@ func TestConfig_Validation(t *testing.T) {
 			}
 		})
 	}
-}
-
-// Helper
-func newTestLogger() *slog.Logger {
-	return slog.New(slog.NewTextHandler(os.Stdout, nil))
 }
