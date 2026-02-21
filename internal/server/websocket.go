@@ -15,6 +15,7 @@ import (
 
 // ClientRequest represents the JSON payload expected from the WebSocket client.
 type ClientRequest struct {
+	RequestID    int    `json:"request_id,omitempty"`    // Optional request ID for request-response correlation
 	Type         string `json:"type"`                    // "execute", "stop", "stats", "version"
 	SessionID    string `json:"session_id"`              // Provide session_id to hot-multiplex
 	Prompt       string `json:"prompt,omitempty"`        // The user input (for "execute")
@@ -25,8 +26,9 @@ type ClientRequest struct {
 
 // ServerResponse represents the JSON payload sent to the WebSocket client.
 type ServerResponse struct {
-	Event string `json:"event"`
-	Data  any    `json:"data"`
+	RequestID int    `json:"request_id,omitempty"` // Echo back request_id for correlation
+	Event     string `json:"event"`
+	Data      any    `json:"data"`
 }
 
 // connWriter wraps a websocket.Conn with a mutex to prevent concurrent writes.
@@ -37,8 +39,11 @@ type connWriter struct {
 	mu   sync.Mutex
 }
 
-func (cw *connWriter) writeJSON(event string, data any) {
+func (cw *connWriter) writeJSON(event string, data any, requestID int) {
 	resp := ServerResponse{Event: event, Data: data}
+	if requestID > 0 {
+		resp.RequestID = requestID
+	}
 	val, err := json.Marshal(resp)
 	if err != nil {
 		// This should rarely happen with our internal types, but log it for enterprise observability
@@ -112,7 +117,7 @@ func (h *WebSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		var req ClientRequest
 		if err := json.Unmarshal(p, &req); err != nil {
-			cw.writeJSON("error", map[string]string{"message": "Invalid JSON payload: " + err.Error()})
+			cw.writeJSON("error", map[string]string{"message": "Invalid JSON payload: " + err.Error()}, 0)
 			continue
 		}
 
@@ -127,14 +132,14 @@ func (h *WebSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case "version":
 			h.handleVersion(cw, req)
 		default:
-			cw.writeJSON("error", map[string]string{"message": "Unknown request type: " + req.Type})
+			cw.writeJSON("error", map[string]string{"message": "Unknown request type: " + req.Type}, req.RequestID)
 		}
 	}
 }
 
 func (h *WebSocketHandler) handleExecute(connCtx context.Context, cw *connWriter, req ClientRequest, tasks map[string]context.CancelFunc, mu *sync.Mutex) {
 	if req.Prompt == "" {
-		cw.writeJSON("error", map[string]string{"message": "prompt cannot be empty"})
+		cw.writeJSON("error", map[string]string{"message": "prompt cannot be empty"}, req.RequestID)
 		return
 	}
 
@@ -173,8 +178,10 @@ func (h *WebSocketHandler) handleExecute(connCtx context.Context, cw *connWriter
 
 	h.logger.Info("Async execute start", "session_id", sessionID)
 
+	// Capture request_id for use in callback
+	requestID := req.RequestID
 	cb := func(eventType string, data any) error {
-		cw.writeJSON(eventType, data)
+		cw.writeJSON(eventType, data, requestID)
 		return nil
 	}
 
@@ -182,7 +189,7 @@ func (h *WebSocketHandler) handleExecute(connCtx context.Context, cw *connWriter
 	if err != nil {
 		// Only send error if it wasn't a normal cancellation/stop
 		if taskCtx.Err() == nil {
-			cw.writeJSON("error", map[string]string{"message": "Execution failed: " + err.Error()})
+			cw.writeJSON("error", map[string]string{"message": "Execution failed: " + err.Error()}, requestID)
 		}
 		return
 	}
@@ -191,12 +198,12 @@ func (h *WebSocketHandler) handleExecute(connCtx context.Context, cw *connWriter
 	cw.writeJSON("completed", map[string]any{
 		"session_id": sessionID,
 		"stats":      stats,
-	})
+	}, requestID)
 }
 
 func (h *WebSocketHandler) handleStop(cw *connWriter, req ClientRequest, tasks map[string]context.CancelFunc, mu *sync.Mutex) {
 	if req.SessionID == "" {
-		cw.writeJSON("error", map[string]string{"message": "session_id is required for stop"})
+		cw.writeJSON("error", map[string]string{"message": "session_id is required for stop"}, req.RequestID)
 		return
 	}
 
@@ -216,23 +223,23 @@ func (h *WebSocketHandler) handleStop(cw *connWriter, req ClientRequest, tasks m
 
 	h.logger.Info("Stop request", "session_id", req.SessionID, "reason", reason)
 	if err := h.engine.StopSession(req.SessionID, reason); err != nil {
-		cw.writeJSON("error", map[string]string{"message": "Stop failed: " + err.Error()})
+		cw.writeJSON("error", map[string]string{"message": "Stop failed: " + err.Error()}, req.RequestID)
 		return
 	}
 
-	cw.writeJSON("stopped", map[string]string{"session_id": req.SessionID})
+	cw.writeJSON("stopped", map[string]string{"session_id": req.SessionID}, req.RequestID)
 }
 
 func (h *WebSocketHandler) handleStats(cw *connWriter, req ClientRequest) {
 	stats := h.engine.GetSessionStats()
-	cw.writeJSON("stats", stats)
+	cw.writeJSON("stats", stats, req.RequestID)
 }
 
 func (h *WebSocketHandler) handleVersion(cw *connWriter, req ClientRequest) {
 	version, err := h.engine.GetCLIVersion()
 	if err != nil {
-		cw.writeJSON("error", map[string]string{"message": "Failed to get version: " + err.Error()})
+		cw.writeJSON("error", map[string]string{"message": "Failed to get version: " + err.Error()}, req.RequestID)
 		return
 	}
-	cw.writeJSON("version", map[string]string{"version": version})
+	cw.writeJSON("version", map[string]string{"version": version}, req.RequestID)
 }

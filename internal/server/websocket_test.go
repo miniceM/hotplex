@@ -98,7 +98,7 @@ func TestWebSocketHandler_ServeHTTP_InvalidJSON(t *testing.T) {
 
 		var req ClientRequest
 		if err := json.Unmarshal(p, &req); err != nil {
-			cw.writeJSON("error", map[string]string{"message": "Invalid JSON payload: " + err.Error()})
+			cw.writeJSON("error", map[string]string{"message": "Invalid JSON payload: " + err.Error()}, 0)
 		}
 	}))
 	defer server.Close()
@@ -155,7 +155,7 @@ func TestWebSocketHandler_HandleExecute_EmptyPrompt(t *testing.T) {
 
 		var req ClientRequest
 		if err := json.Unmarshal(p, &req); err != nil {
-			cw.writeJSON("error", map[string]string{"message": "Invalid JSON payload: " + err.Error()})
+			cw.writeJSON("error", map[string]string{"message": "Invalid JSON payload: " + err.Error()}, 0)
 			return
 		}
 
@@ -228,7 +228,7 @@ func TestWebSocketHandler_HandleExecute_AutoSessionID(t *testing.T) {
 			if sessionID == "" {
 				sessionID = "auto-generated-id"
 			}
-			cw.writeJSON("test", map[string]string{"session_id": sessionID})
+			cw.writeJSON("test", map[string]string{"session_id": sessionID}, 0)
 		}
 	}))
 	defer server.Close()
@@ -346,7 +346,7 @@ func TestWebSocketHandler_UnknownRequestType(t *testing.T) {
 
 		var req ClientRequest
 		if err := json.Unmarshal(p, &req); err != nil {
-			cw.writeJSON("error", map[string]string{"message": "Invalid JSON payload: " + err.Error()})
+			cw.writeJSON("error", map[string]string{"message": "Invalid JSON payload: " + err.Error()}, 0)
 			return
 		}
 
@@ -363,7 +363,7 @@ func TestWebSocketHandler_UnknownRequestType(t *testing.T) {
 		case "stop":
 			h.handleStop(cw, req, tasks, &mu)
 		default:
-			cw.writeJSON("error", map[string]string{"message": "Unknown request type: " + req.Type})
+			cw.writeJSON("error", map[string]string{"message": "Unknown request type: " + req.Type}, req.RequestID)
 		}
 	}))
 	defer server.Close()
@@ -405,7 +405,7 @@ func TestConnWriter_WriteJSON(t *testing.T) {
 		defer func() { _ = conn.Close() }()
 
 		cw := &connWriter{conn: conn}
-		cw.writeJSON("test_event", map[string]string{"key": "value"})
+		cw.writeJSON("test_event", map[string]string{"key": "value"}, 0)
 	}))
 	defer server.Close()
 
