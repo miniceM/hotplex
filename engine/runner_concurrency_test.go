@@ -15,6 +15,7 @@ import (
 
 	intengine "github.com/hrygo/hotplex/internal/engine"
 	"github.com/hrygo/hotplex/internal/security"
+	"github.com/hrygo/hotplex/provider"
 	"github.com/hrygo/hotplex/types"
 )
 
@@ -52,12 +53,19 @@ done
 		Timeout:     5 * time.Minute,
 	}
 
+	// Create test provider
+	prv, err := provider.NewClaudeCodeProvider(provider.ProviderConfig{}, logger)
+	if err != nil {
+		t.Fatalf("Failed to create test provider: %v", err)
+	}
+
 	// Manually construct engine to use dummyPath
 	eng := &Engine{
 		opts:           opts,
 		cliPath:        dummyPath,
 		logger:         logger,
-		manager:        intengine.NewSessionPool(logger, opts.IdleTimeout, intengine.EngineOptions(opts), dummyPath),
+		provider:       prv,
+		manager:        intengine.NewSessionPool(logger, opts.IdleTimeout, intengine.EngineOptions(opts), dummyPath, prv),
 		dangerDetector: security.NewDetector(logger),
 	}
 	defer eng.manager.Shutdown()

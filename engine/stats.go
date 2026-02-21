@@ -7,9 +7,9 @@ import (
 
 // SessionStats collects session-level statistics for Geek/Evolution modes.
 type SessionStats struct {
-	mu                   sync.Mutex
+	mu                   sync.Mutex      `json:"-"`
 	SessionID            string          `json:"session_id"`
-	StartTime            time.Time       `json:"start_time"`
+	StartTime            time.Time       `json:"-"` // Internal use only, use ToSummary() for JSON
 	TotalDurationMs      int64           `json:"total_duration_ms"`
 	ThinkingDurationMs   int64           `json:"thinking_duration_ms"`
 	ToolDurationMs       int64           `json:"tool_duration_ms"`
@@ -19,20 +19,20 @@ type SessionStats struct {
 	CacheWriteTokens     int32           `json:"cache_write_tokens"`
 	CacheReadTokens      int32           `json:"cache_read_tokens"`
 	ToolCallCount        int32           `json:"tool_call_count"`
-	ToolsUsed            map[string]bool `json:"tools_used"`
+	ToolsUsed            map[string]bool `json:"-"` // Internal set, use ToSummary() for array
 	FilesModified        int32           `json:"files_modified"`
 	FilePaths            []string        `json:"file_paths"`
-	filePathsSet         map[string]bool // O(1) deduplication for file paths
+	filePathsSet         map[string]bool `json:"-"` // O(1) deduplication for file paths
 
 	// Current tool tracking
-	currentToolStart time.Time
-	currentToolName  string
-	currentToolID    string
+	currentToolStart time.Time `json:"-"`
+	currentToolName  string    `json:"-"`
+	currentToolID    string    `json:"-"`
 
 	// Phase tracking for duration breakdown
-	thinkingStart   time.Time
-	generationStart time.Time
-	hasGeneration   bool // Tracks if any content was generated
+	thinkingStart   time.Time `json:"-"`
+	generationStart time.Time `json:"-"`
+	hasGeneration   bool      `json:"-"` // Tracks if any content was generated
 }
 
 // RecordToolUse records the start of a tool call.
@@ -154,20 +154,20 @@ func (s *SessionStats) ToSummary() map[string]interface{} {
 	}
 
 	return map[string]any{
-		"session_id":               s.SessionID,
-		"total_duration_ms":        s.TotalDurationMs,
-		"thinking_duration_ms":     s.ThinkingDurationMs,
-		"tool_duration_ms":         s.ToolDurationMs,
-		"generation_duration_ms":   s.GenerationDurationMs,
-		"total_input_tokens":       s.InputTokens,
-		"total_output_tokens":      s.OutputTokens,
-		"total_cache_write_tokens": s.CacheWriteTokens,
-		"total_cache_read_tokens":  s.CacheReadTokens,
-		"tool_call_count":          s.ToolCallCount,
-		"tools_used":               tools,
-		"files_modified":           s.FilesModified,
-		"file_paths":               s.FilePaths,
-		"status":                   "success",
+		"session_id":             s.SessionID,
+		"total_duration_ms":      s.TotalDurationMs,
+		"thinking_duration_ms":   s.ThinkingDurationMs,
+		"tool_duration_ms":       s.ToolDurationMs,
+		"generation_duration_ms": s.GenerationDurationMs,
+		"input_tokens":           s.InputTokens,
+		"output_tokens":          s.OutputTokens,
+		"cache_write_tokens":     s.CacheWriteTokens,
+		"cache_read_tokens":      s.CacheReadTokens,
+		"tool_call_count":        s.ToolCallCount,
+		"tools_used":             tools,
+		"files_modified":         s.FilesModified,
+		"file_paths":             s.FilePaths,
+		"status":                 "success",
 	}
 }
 
