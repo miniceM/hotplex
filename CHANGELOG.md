@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.7.2] - 2026-02-22
+
+### Added
+- **Session-level Persistence**: `TaskInstructions` are now stored in the session and automatically reused across turns unless explicitly overridden.
+
+### Changed
+- **Terminology Refinement**: Renamed `TaskSystemPrompt` to `TaskInstructions` throughout the codebase, SDK examples, and WebSocket API (`instructions`) to better reflect its role as the user's objective.
+
 ## [v0.7.1] - 2026-02-21
 
 ### Added
