@@ -100,3 +100,4 @@ If the USER asks you to `[Implement]`, `[Extend]`, or `[Fix]` something in HotPl
 2.  **Verify**: Check this `AGENT.md` for architectural constraints.
 3.  **Execute**: Write the code, ensuring concurrency locks and PGID rules are respected.
 4.  **Validate**: Ensure it builds (`go build ./...`).
+5.  **GitHub Operations**: Prioritize using the `gh` command or MCP tools for any GitHub-related actions (Releases, PRs, Runs, Issues).

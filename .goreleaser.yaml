@@ -30,9 +30,6 @@ archives:
       - README.md
       - README_zh.md
 
-release:
-  release_notes_file: RELEASE_NOTES.md
-
 checksum:
   name_template: 'checksums.txt'
 
