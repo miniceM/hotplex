@@ -2,7 +2,7 @@
 
 *Read this in other languages: [English](architecture.md), [简体中文](architecture_zh.md).*
 
-hotplex is a high-performance **Agent Runtime** for AI CLI Agents, designed to transform elite terminal-based AI tools (like Claude Code, Aider, or OpenCode) into production-ready system services. Its core philosophy is "Leverage vs Build"—by maintaining a persistent process pool with hardened security boundaries and a normalized protocol layer, hotplex enables millisecond-level responsiveness and full-duplex streaming integration.
+hotplex is a high-performance **Agent Runtime** for AI CLI Agents, designed to transform one-off terminal-based AI tools (like Claude Code or OpenCode) into production-ready, long-lived interactive services. Its core philosophy is "Leverage vs Build"—by maintaining a persistent process pool with hardened security boundaries and a normalized full-duplex protocol layer, hotplex eliminates the spin-up overhead of headless CLI environments and enables millisecond-level responsiveness.
 
 ---
 

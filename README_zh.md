@@ -1,8 +1,8 @@
 <div align="center">
   <img src=".github/assets/hotplex-logo.svg" alt="hotplex" width="160" style="background: #0D1117; border-radius: 24px; padding: 20px;"/>
   <h1>hotplex</h1>
-  <p><b>让顶尖 AI CLI 智能体 跨入 生产级应用 的 控制平面 (Control Plane)</b></p>
-  <p><i>无需从零构建，直接复用 Claude Code 等强大的 AI 工具，实现毫秒级响应、安全隔离与全双工集成。</i></p>
+  <p><b>将顶尖 AI CLI 智能体转化为“生产就绪”交互服务的执行基座</b></p>
+  <p><i>打破一次性 CLI 任务的局限，通过全双工、可追加指令的有状态模式，实现毫秒级交互、安全隔离与极简系统集成。</i></p>
 
   <p>
     <a href="https://github.com/hrygo/hotplex/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/hrygo/hotplex/ci.yml?branch=main&style=for-the-badge&logo=github&label=Build" alt="Build Status"></a>
@@ -20,22 +20,22 @@
 
 ## ⚡ 什么是 hotplex？
 
-**hotplex** 不仅仅是一个进程复用器，它是 AI 智能体工程化的**“最后 1 公里”适配器**。
+**hotplex** 不仅仅是一个进程复用器，它是 AI 智能体工程化集成的**“超级适配桥梁”**。
 
-我们的**第一性原理**是：**借助既有的、强大的 AI CLI 工具（如 Claude Code, Aider, OpenCode），将其从“供人类使用的终端工具”升级为“供系统调用的云原生算子”。**
+我们的**第一性原理**是：**将原本为“人类终端”设计的 AI CLI 工具（如 Claude Code, OpenCode），升级为“面向系统指令”的长生命周期交互服务（Cli-as-a-Service）。**
 
-开发者不再需要从零构建复杂的 Agent 运行环境或重写文件操作逻辑。hotplex 通过在后台维护持久化的、线程安全的进程池，解决了冷启动延迟带来的交互断层，并提供了统一的安全围栏与流式 I/O 抽象。这使得无论是构建个人 AI 助手还是企业级 CI/CD 工具，都能以最小的代价获得最先进的 Agent 能力。
+开发者不再需要为 Headless 模式下频繁重启 CLI 带来的数秒延迟而苦恼，也不必从零构建复杂的 Agent 环境。hotplex 通过在后台维护持久化的、全双工的会话池，彻底消灭了冷启动带来的交互断层，让 Agent 的集成像调用普通 API 一样简单、连贯且安全。
 
 <div align="center">
   <img src="docs/images/features.svg" alt="hotplex Features Outline" width="100%">
 </div>
 
 ### 为什么选择 hotplex？
-- 🧩 **复用即生产**：直接集成 Claude Code 等尖端工具，跳过繁琐的 Agent 逻辑开发。
-- 🚀 **200ms 极速响应**：彻底消除 Node.js/Python 运行时启动延迟，提供丝滑的交互体验。
-- ♻️ **有状态会话池**：自动管理底层进程生命周期，支持跨请求的 VFS state 与上下文持久化。
-- 🔒 **安全管控中心**：内置指令级 WAF 防火墙与进程组隔离，为 AI 代理的操作提供硬核安全围栏。
-- 🔌 **生产级适配**：支持 **Go SDK** 原生嵌入或 **HotPlex 代理服务器** 部署，同时支持 WebSocket 与 **OpenCode (HTTP/SSE)** 协议。
+- 🔄 **Cli-as-a-Service**：打破“运行即收摊”的局限，支持同一进程内持续追加指令，保持上下文状态。
+- 🧩 **极简便利集成**：提供统一的 Go SDK 与协议网关，让顶级智能体能力瞬间接入你的现有产品。
+- 🚀 **消除等待代价**：彻底屏蔽 Node.js/Python 运行时漫长的启动耗时，提供亚秒级的丝滑反馈。
+- 🛡️ **快且相对安全**：内置指令级 WAF 与 PGID 隔离，为 AI 在 Shell 中的各种操作戴上“防护手套”。
+- 🔌 **全场景兼容**：无论是原生 Go 嵌入还是独立代理服务器，均支持 WebSocket 与 OpenCode 兼容协议。
 
 ---
 

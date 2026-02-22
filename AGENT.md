@@ -1,6 +1,6 @@
 # 🤖 AI Agent Guidelines for hotplex (AGENT.md)
 
-Welcome, AI Developer! This document serves as the top-level context and operational boundary for any AI Agent (like Claude Code, OpenCode, Aider, or Antigravity) working on the **hotplex** codebase. 
+Welcome, AI Developer! This document serves as the top-level context and operational boundary for any AI Agent (like Claude Code, OpenCode, or Antigravity) working on the **hotplex** codebase. 
 
 Please read and strictly adhere to the following rules when analyzing, modifying, or creating code in this project.
 
@@ -9,8 +9,8 @@ Please read and strictly adhere to the following rules when analyzing, modifying
 ## 🏗 1. Project Overview & Identity
 
 **hotplex** is a high-performance **AI Agent Control Plane**.
-- **First Principle**: Instead of reinventing the wheel, we leverage existing, powerful AI CLI agents (like Claude Code, Aider, OpenCode) and bridge them into production-grade systems. We upgrade "human-oriented terminal tools" into "system-oriented cloud-native operators."
-- **Core Role**: It provides a production-ready execution environment for AI agents, solving the "cold start" latency for local tools and providing a unified control layer for security, state, and streaming.
+- **First Principle**: Instead of reinventing the wheel, we leverage existing, powerful AI CLI agents (like Claude Code, OpenCode) and bridge them into production-ready systems by converting them into long-lived, interactive services (**Cli-as-a-Service**).
+- **Core Role**: It provides a production-ready execution environment for AI agents, eliminating the continuous spin-up overhead of headless CLI mode and providing a unified control layer for security, state, and streaming.
 - **Primary Language**: Go (Golang) 1.24
 - **Architecture**: A lightweight Gateway (WebSocket) wrapping a Core Engine (`hotplex.Engine`), a persistence layer (`internal/engine/pool.go`), and a strict Regex WAF (`internal/security/detector.go`).
 

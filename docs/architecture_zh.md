@@ -2,7 +2,7 @@
 
 *查看其他语言: [English](architecture.md), [简体中文](architecture_zh.md).*
 
-hotplex 是一个高性能的 **AI 智能体运行时 (Agent Runtime)**，旨在将顶级 AI 命令行工具（如 Claude Code, OpenCode）转化为生产就绪的系统级服务。它的核心哲学是“利用胜于构建 (Leverage vs Build)”，通过维护持久化的、具备安全围栏的进程池，并引入归一化的协议层，实现毫秒级的指令响应与全双工流式集成。
+hotplex 是一个高性能的 **AI 智能体运行时 (Agent Runtime)**，旨在将原本“单次运行”的 AI CLI 工具（如 Claude Code, OpenCode）转化为生产就绪的长生命周期交互服务。它的核心哲学是“利用胜于构建 (Leverage vs Build)”，通过维护持久化的、具备安全围栏的全双工进程池，彻底消灭 Headless 模式下的冷启动代价，实现毫秒级的指令响应。
 
 ---
 
