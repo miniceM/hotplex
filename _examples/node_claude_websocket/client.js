@@ -34,6 +34,9 @@ ws.on("message", (data) => {
       break;
     case "completed":
       console.log("\nDone!");
+      if (msg.data.stats) {
+        console.log(`Stats -> Duration: ${msg.data.stats.total_duration_ms}ms, Tokens (In/Out): ${msg.data.stats.input_tokens}/${msg.data.stats.output_tokens}`);
+      }
       ws.close();
       break;
     case "error":

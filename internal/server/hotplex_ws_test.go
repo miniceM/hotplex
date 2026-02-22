@@ -28,7 +28,7 @@ func (m *mockEngine) Close() error {
 	return nil
 }
 
-func (m *mockEngine) GetSessionStats() *hotplex.SessionStats {
+func (m *mockEngine) GetSessionStats(sessionID string) *hotplex.SessionStats {
 	return nil
 }
 

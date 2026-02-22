@@ -188,7 +188,7 @@ func (h *HotPlexWSHandler) handleExecute(connCtx context.Context, cw *connWriter
 		return
 	}
 
-	stats := h.engine.GetSessionStats()
+	stats := h.engine.GetSessionStats(sessionID)
 	cw.writeJSON("completed", map[string]any{
 		"session_id": sessionID,
 		"stats":      stats,
@@ -225,7 +225,11 @@ func (h *HotPlexWSHandler) handleStop(cw *connWriter, req ClientRequest, tasks m
 }
 
 func (h *HotPlexWSHandler) handleStats(cw *connWriter, req ClientRequest) {
-	stats := h.engine.GetSessionStats()
+	if req.SessionID == "" {
+		cw.writeJSON("error", map[string]string{"message": "session_id is required for stats"}, req.RequestID)
+		return
+	}
+	stats := h.engine.GetSessionStats(req.SessionID)
 	cw.writeJSON("stats", stats, req.RequestID)
 }
 

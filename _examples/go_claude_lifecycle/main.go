@@ -112,6 +112,14 @@ func main() {
 		fmt.Println("Session terminated successfully.")
 	}
 
+	fmt.Println("\n[5] Fetching Final Session Stats Manually...")
+	// Demonstrates the new v0.8.0 GetSessionStats(sessionID) interface
+	stats := engine.GetSessionStats(sessionID)
+	if stats != nil {
+		fmt.Printf("Manually Fetched Stats -> Duration: %dms, Input Tokens: %d, Output Tokens: %d\n",
+			stats.TotalDurationMs, stats.InputTokens, stats.OutputTokens)
+	}
+
 	fmt.Println("\n=== Demo Complete ===")
 }
 

@@ -141,7 +141,7 @@ client.Execute(ctx, cfg, prompt, cb)
 // 2. 进阶控制 (SessionController 接口)
 // 如果您持有的是 hotplex.HotPlexClient 接口，可以通过断言获取子能力
 if controller, ok := client.(hotplex.SessionController); ok {
-    stats := controller.GetSessionStats()
+    stats := controller.GetSessionStats("user_session_123")
     fmt.Printf("已消耗 Input Tokens: %d\n", stats.InputTokens)
     
     // 强制终止一个超时的会话
@@ -158,11 +158,11 @@ if safety, ok := client.(hotplex.SafetyManager); ok {
 ```
 
 #### `SessionController` (生命周期与观测)
-| 方法                              | 说明                                                       |
-| :-------------------------------- | :--------------------------------------------------------- |
-| `GetSessionStats() *SessionStats` | 返回当前引擎实例的最新的遥测数据和 Token 使用情况。        |
-| `StopSession(id, reason) error`   | 强制终止特定会话及其进程组（适用于 Web UI 的“停止”按钮）。 |
-| `GetCLIVersion() (string, error)` | 返回底层 AI CLI 工具的版本号。                             |
+| 方法                                | 说明                                                       |
+| :---------------------------------- | :--------------------------------------------------------- |
+| `GetSessionStats(id) *SessionStats` | 返回特定会话的最新的遥测数据和 Token 使用情况。            |
+| `StopSession(id, reason) error`     | 强制终止特定会话及其进程组（适用于 Web UI 的“停止”按钮）。 |
+| `GetCLIVersion() (string, error)`   | 返回底层 AI CLI 工具的版本号。                             |
 
 #### `SafetyManager` (安全策略)
 | 方法                                        | 说明                                                    |

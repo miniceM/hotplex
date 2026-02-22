@@ -41,6 +41,7 @@ type Session struct {
 
 	callback Callback
 	logger   *slog.Logger
+	ext      any // Extension payload for consumer packages
 }
 
 // IsAlive checks if the process is still running.
@@ -192,6 +193,20 @@ func (s *Session) GetCallback() Callback {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.callback
+}
+
+// SetExt attaches external state to the session.
+func (s *Session) SetExt(data any) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.ext = data
+}
+
+// GetExt retrieves the external state attached to the session.
+func (s *Session) GetExt() any {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.ext
 }
 
 // isExpectedCloseError checks if the error is an expected pipe closure during normal shutdown.

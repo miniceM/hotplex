@@ -140,7 +140,7 @@ client.Execute(ctx, cfg, prompt, cb)
 
 // 2. Advanced Control (SessionController)
 if controller, ok := client.(hotplex.SessionController); ok {
-    stats := controller.GetSessionStats()
+    stats := controller.GetSessionStats("user_session_123")
     fmt.Printf("Input Tokens: %d\n", stats.InputTokens)
     
     // Stop a hung session
@@ -155,11 +155,11 @@ if safety, ok := client.(hotplex.SafetyManager); ok {
 ```
 
 #### `SessionController` (Lifecycle & Observability)
-| Method                            | Description                                                                 |
-| :-------------------------------- | :-------------------------------------------------------------------------- |
-| `GetSessionStats() *SessionStats` | Returns the latest telemetry/tokens for the current engine instance.        |
-| `StopSession(id, reason) error`   | Forcibly terminates a specific session (useful for Web UIs "Stop" buttons). |
-| `GetCLIVersion() (string, error)` | Returns the version of the underlying agent binary.                         |
+| Method                              | Description                                                                 |
+| :---------------------------------- | :-------------------------------------------------------------------------- |
+| `GetSessionStats(id) *SessionStats` | Returns the latest telemetry/tokens for the specified session.              |
+| `StopSession(id, reason) error`     | Forcibly terminates a specific session (useful for Web UIs "Stop" buttons). |
+| `GetCLIVersion() (string, error)`   | Returns the version of the underlying agent binary.                         |
 
 #### `SafetyManager` (Security Policy)
 | Method                                      | Description                                              |

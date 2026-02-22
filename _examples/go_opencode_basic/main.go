@@ -102,5 +102,11 @@ func main() {
 		log.Fatalf("Execution failed: %v", err)
 	}
 
+	// 6. Manual Stats Retrieval
+	stats := engine.GetSessionStats(cfg.SessionID)
+	if stats != nil {
+		fmt.Printf("\n[Manual Stats Check] Total Duration: %dms, Tools: %v\n", stats.TotalDurationMs, stats.ToolsUsed)
+	}
+
 	fmt.Println("\n=== Demo Complete ===")
 }

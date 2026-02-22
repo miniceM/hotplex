@@ -105,5 +105,14 @@ func main() {
 		log.Fatalf("Phase 3 failed: %v", err)
 	}
 
-	fmt.Printf("\n\n=== Demo Complete (Session ID: %s) ===\n", lastProviderSessionID)
+	// --- PHASE 4: Fetching Stats Manually ---
+	fmt.Println("\n\n[Phase 4] Fetching Session Stats Manually...")
+	// Demonstrates the new v0.8.0 GetSessionStats(sessionID) interface
+	stats := engine.GetSessionStats(sessionID)
+	if stats != nil {
+		fmt.Printf("Manually Fetched Stats -> Duration: %dms, Input Tokens: %d, Output Tokens: %d\n",
+			stats.TotalDurationMs, stats.InputTokens, stats.OutputTokens)
+	}
+
+	fmt.Printf("\n=== Demo Complete (Session ID: %s) ===\n", sessionID)
 }

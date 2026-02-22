@@ -34,25 +34,30 @@ If configured, the server requires an API key passed via header or query paramet
 ### Client Requests (JSON)
 Clients send JSON messages to control the engine.
 
-| Field          | Type   | Description                                                |
-| :------------- | :----- | :--------------------------------------------------------- |
-| `type`         | string | `execute`, `stop`, `stats`, or `version`                   |
-| `session_id`   | string | Unique identifier for the session (optional for `execute`) |
-| `prompt`       | string | User input (required for `execute`)                        |
-| `instructions` | string | System instructions/constraints                            |
-| `work_dir`     | string | Sandbox working directory                                  |
+| Field          | Type    | Description                                                |
+| :------------- | :------ | :--------------------------------------------------------- |
+| `request_id`   | integer | Optional, used to track request-response pairs             |
+| `type`         | string  | `execute`, `stop`, `stats`, or `version`                   |
+| `session_id`   | string  | Unique identifier for the session (optional for `execute`) |
+| `prompt`       | string  | User input (required for `execute`)                        |
+| `instructions` | string  | System instructions/constraints                            |
+| `work_dir`     | string  | Sandbox working directory                                  |
+| `reason`       | string  | Reason for stopping (only for `stop` type)                 |
 
 ### Server Events (JSON)
 The server broadcasts events in real-time.
 
-| Event         | Description                                        |
-| :------------ | :------------------------------------------------- |
-| `thinking`    | Model reasoning or chain-of-thought                |
-| `tool_use`    | Agent initiating a tool call (e.g., shell command) |
-| `tool_result` | Output/response from the executed tool             |
-| `answer`      | Final text response from the agent                 |
-| `completed`   | Task execution finished (includes session stats)   |
-| `error`       | Protocol or execution error                        |
+| Event         | Description                                                 |
+| :------------ | :---------------------------------------------------------- |
+| `thinking`    | Model reasoning or chain-of-thought                         |
+| `tool_use`    | Agent initiating a tool call (e.g., shell command)          |
+| `tool_result` | Output/response from the executed tool                      |
+| `answer`      | Final text response from the agent                          |
+| `completed`   | Task execution finished (includes `session_id` and `stats`) |
+| `stopped`     | Task manually stopped by client                             |
+| `stats`       | Returns telemetry/usage statistics for a session            |
+| `version`     | Returns version information of the underlying CLI engine    |
+| `error`       | Protocol or execution error                                 |
 
 ### Example (Python)
 ```python
@@ -96,10 +101,10 @@ Establishes an SSE channel to receive broadcast events.
 #### Create Session
 `POST /session`
 Returns a new session ID.
-**Response**: `{"id": "uuid-..."}`
+**Response**: `{"info": {"id": "uuid-...", "projectID": "default", ...}}`
 
 #### Send Prompt
-`POST /session/{id}/message`
+`POST /session/{id}/message` or `POST /session/{id}/prompt_async`
 Submits a prompt for execution. Returns `202 Accepted` immediately; outputs flow through the SSE channel.
 
 | Field    | Type   | Description                          |
@@ -107,6 +112,12 @@ Submits a prompt for execution. Returns `202 Accepted` immediately; outputs flow
 | `prompt` | string | The user query                       |
 | `agent`  | string | Recommended agent name (optional)    |
 | `model`  | string | Specific model identifier (optional) |
+
+**SSE Event Mapping**:
+OpenCode SSE messages are formatted as `{"type": "message.part.updated", "properties": {"part": {...}}}`. The `part.type` mappings are:
+- `text`: Maps to agent `answer`.
+- `reasoning`: Maps to agent `thinking`.
+- `tool`: Maps to `tool_use` and `tool_result`.
 
 #### Server Configuration
 `GET /config`

@@ -124,4 +124,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Execution failed: %v", err)
 	}
+
+	// 5. Fetching Stats Manually (New in v0.8.0)
+	// You can fetch cumulative stats directly from the engine by SessionID.
+	stats := engine.GetSessionStats(cfg.SessionID)
+	if stats != nil {
+		fmt.Printf("\n[Manual Stats Check] Total Input Tokens: %d\n", stats.InputTokens)
+	}
 }

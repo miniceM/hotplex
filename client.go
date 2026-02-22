@@ -29,10 +29,14 @@ type Executor interface {
 
 // SessionController provides administrative control over persistent sessions.
 type SessionController interface {
-	// GetSessionStats returns telemetry and token usage for the current/last session.
-	GetSessionStats() *SessionStats
+	// GetSessionStats returns telemetry and token usage for the given sessionID.
+	// Note: Use the business-side sessionID provided during execution, not the internal
+	// CLI-level session identifier. This sessionID maps to a specific background process.
+	GetSessionStats(sessionID string) *SessionStats
 
-	// StopSession forcibly terminates a persistent session and its process group.
+	// StopSession forcibly terminates a persistent session and its underlying OS process group.
+	// Note: Use the business-side sessionID (provided by the user) to identify which
+	// specific agent instance to terminate.
 	StopSession(sessionID string, reason string) error
 
 	// GetCLIVersion returns the version string of the underlying AI CLI tool.

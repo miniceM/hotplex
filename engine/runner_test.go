@@ -108,7 +108,7 @@ func TestEngine_GetSessionStats_Nil(t *testing.T) {
 		logger: slog.New(slog.NewTextHandler(os.Stdout, nil)),
 	}
 
-	stats := engine.GetSessionStats()
+	stats := engine.GetSessionStats("non-existent-session")
 	if stats != nil {
 		t.Errorf("GetSessionStats() on new engine should return nil, got %v", stats)
 	}

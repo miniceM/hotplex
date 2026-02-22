@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/hrygo/hotplex/event"
@@ -34,9 +33,6 @@ type Engine struct {
 	provider       provider.Provider
 	manager        intengine.SessionManager
 	dangerDetector *security.Detector
-	// Session stats for the last execution (thread-safe)
-	statsMu      sync.RWMutex
-	currentStats *SessionStats
 }
 
 // NewEngine creates a new HotPlex Engine instance.
@@ -132,12 +128,6 @@ func (r *Engine) Execute(ctx context.Context, cfg *types.Config, prompt string, 
 		return fmt.Errorf("failed to create work directory: %w", err)
 	}
 
-	// Initialize session stats for observability
-	stats := &SessionStats{
-		SessionID: cfg.SessionID,
-		StartTime: time.Now(),
-	}
-
 	// Send thinking event
 	if callbackSafe := event.WrapSafe(r.logger, callback); callbackSafe != nil {
 		meta := &event.EventMeta{
@@ -153,7 +143,7 @@ func (r *Engine) Execute(ctx context.Context, cfg *types.Config, prompt string, 
 	)
 
 	// Execute via multiplexed persistent session
-	if err := r.executeWithMultiplex(ctx, cfg, prompt, callback, stats); err != nil {
+	if err := r.executeWithMultiplex(ctx, cfg, prompt, callback); err != nil {
 		r.logger.Error("Engine: execution failed",
 			"namespace", r.opts.Namespace,
 			"session_id", cfg.SessionID,
@@ -161,39 +151,25 @@ func (r *Engine) Execute(ctx context.Context, cfg *types.Config, prompt string, 
 		return err
 	}
 
-	// Finalize and save session stats
-	if stats.TotalDurationMs <= 1 {
-		measuredDuration := time.Since(stats.StartTime).Milliseconds()
-		if measuredDuration > stats.TotalDurationMs {
-			stats.TotalDurationMs = measuredDuration
-		}
-	}
-	r.statsMu.Lock()
-	r.currentStats = stats
-	r.statsMu.Unlock()
-
 	r.logger.Info("Engine: Session completed",
 		"namespace", r.opts.Namespace,
-		"session_id", stats.SessionID,
-		"total_duration_ms", stats.TotalDurationMs,
-		"tool_duration_ms", stats.ToolDurationMs,
-		"tool_calls", stats.ToolCallCount,
-		"tools_used", len(stats.ToolsUsed))
+		"session_id", cfg.SessionID)
 
 	return nil
 }
 
-// GetSessionStats returns a copy of the current session stats.
-func (r *Engine) GetSessionStats() *SessionStats {
-	r.statsMu.RLock()
-	defer r.statsMu.RUnlock()
-
-	if r.currentStats == nil {
+// GetSessionStats returns a copy of the accumulated session stats.
+func (r *Engine) GetSessionStats(sessionID string) *SessionStats {
+	if r.manager == nil {
 		return nil
 	}
-
-	// Finalize any ongoing phases before copying
-	return r.currentStats.FinalizeDuration()
+	if sess, ok := r.manager.GetSession(sessionID); ok {
+		if ext := sess.GetExt(); ext != nil {
+			stats := ext.(*SessionStats)
+			return stats.FinalizeDuration()
+		}
+	}
+	return nil
 }
 
 // ValidateConfig validates the Config.
@@ -232,7 +208,6 @@ func (r *Engine) executeWithMultiplex(
 	cfg *types.Config,
 	prompt string,
 	callback event.Callback,
-	stats *SessionStats,
 ) error {
 	// Convert to engine session config
 	sessionCfg := intengine.SessionConfig{
@@ -244,6 +219,20 @@ func (r *Engine) executeWithMultiplex(
 	sess, err := r.manager.GetOrCreateSession(ctx, cfg.SessionID, sessionCfg)
 	if err != nil {
 		return fmt.Errorf("get or create session: %w", err)
+	}
+
+	// Initialize or fetch persistent SessionStats
+	var stats *SessionStats
+	if ext := sess.GetExt(); ext != nil {
+		stats = ext.(*SessionStats)
+	} else {
+		stats = &SessionStats{
+			SessionID: cfg.SessionID,
+			StartTime: time.Now(),
+			ToolsUsed: make(map[string]bool),
+			FilePaths: make([]string, 0),
+		}
+		sess.SetExt(stats)
 	}
 
 	r.logger.Info("Engine: session pipeline ready for hot-multiplexing",
@@ -388,14 +377,15 @@ func (r *Engine) handleNormalizedResult(pevt *provider.ProviderEvent, stats *Ses
 	defer stats.mu.Unlock()
 
 	// Update final duration and tokens from provider metadata if available
+	// Accumulate stats (+=) across hot-multiplexed turns
 	if pevt.Metadata != nil {
 		if pevt.Metadata.TotalDurationMs > 0 {
-			stats.TotalDurationMs = pevt.Metadata.TotalDurationMs
+			stats.TotalDurationMs += pevt.Metadata.TotalDurationMs
 		}
-		stats.InputTokens = pevt.Metadata.InputTokens
-		stats.OutputTokens = pevt.Metadata.OutputTokens
-		stats.CacheWriteTokens = pevt.Metadata.CacheWriteTokens
-		stats.CacheReadTokens = pevt.Metadata.CacheReadTokens
+		stats.InputTokens += pevt.Metadata.InputTokens
+		stats.OutputTokens += pevt.Metadata.OutputTokens
+		stats.CacheWriteTokens += pevt.Metadata.CacheWriteTokens
+		stats.CacheReadTokens += pevt.Metadata.CacheReadTokens
 	}
 
 	// Prepare final telemetry package
