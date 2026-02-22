@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.8.1] - 2026-02-22
+
+### Fixed
+- **Example Security**: Corrected invalid permission mode `bypass-permissions` to `bypassPermissions` in Go examples, fixing "session is dead" errors.
+- **SDK Stability**: Fixed an unused variable in `go_opencode_lifecycle` example that prevented compilation.
+
+### Changed
+- **Example Optimization**: Updated Go and Node.js examples to demonstrate the new stateful `GetSessionStats(sessionID)` interface introduced in v0.8.0.
+- **Internal Refactoring**: Renamed `CCSessionID` to `ProviderSessionID` across the engine and pool for better semantic consistency across different providers.
+
+### Added
+- **Migration Guides**: Added comprehensive developer migration guides for v0.8.0 (`docs/migration/migration-guide-v0.8.0.md` and its Chinese translation).
+- **Bug Documentation**: Created a dedicated issue report for the OpenCode CLI startup bug in `docs/issues/` and tracked it in GitHub Issue #17.
+
 ## [v0.8.0] - 2026-02-22
 
 ### Added

@@ -86,7 +86,7 @@ func main() {
     // 1. Initialize engine singleton
     opts := hotplex.EngineOptions{
         Timeout:         5 * time.Minute,
-        PermissionMode:  "bypass-permissions",
+        PermissionMode:  "bypassPermissions",
         AllowedTools:    []string{"Bash", "Edit", "Read", "FileSearch"},
     }
     engine, _ := hotplex.NewEngine(opts)
