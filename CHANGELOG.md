@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.9.0] - 2026-02-23
+
+### Added
+- **TypeScript SDK MVP**: Launched the official TypeScript/JavaScript SDK in `sdks/typescript`, supporting both Node.js and Browser environments via WebSockets.
+- **Enterprise Observability**:
+  - Integrated **OpenTelemetry** for distributed tracing of agent sessions and tool calls.
+  - Added **Prometheus Metrics** endpoint (`/metrics`) for real-time monitoring of session activity, errors, and tool usage.
+  - Implemented standard **Health Check** endpoints (`/health`, `/health/ready`, `/health/live`) for Kubernetes and industrial monitoring.
+- **Reliability & Stability**:
+  - Added **Hot Configuration Reload**: The server now automatically reloads configuration files on changes without restart (using `fsnotify`).
+  - Added **Stress Testing Suite**: New automated stress tests in `engine/stress_test.go` to validate performance under 100+ concurrent sessions.
+- **Documentation**:
+  - Launched **VitePress Documentation Site** (in `docs/`) for a better developer reading experience.
+  - Added multiple language-specific SDK guides and quick-start documents.
+
+### Fixed
+- **Code Quality**: Project-wide Lint cleanup addressing `errcheck`, `staticcheck`, and `unused` field issues to ensure high-grade Go code standards.
+- **Dependency Management**: Tidied `go.mod` to properly mark `fsnotify` and other core packages as direct dependencies.
+
 ## [v0.8.3] - 2026-02-22
 
 ### Added
