@@ -35,7 +35,3 @@ checksum:
 
 snapshot:
   version_template: "{{ incpatch .Tag }}-next"
-
-# Disable automatic changelog generation to prevent overwriting
-changelog:
-  disable: true
