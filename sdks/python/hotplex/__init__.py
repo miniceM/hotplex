@@ -8,6 +8,7 @@ __version__ = "0.1.0"
 __author__ = "HotPlex Team"
 
 from .client import HotPlexClient
+from .opencode import OpenCodeClient
 from .errors import (
     HotPlexError,
     ConnectionError,
@@ -17,10 +18,11 @@ from .errors import (
     SessionError,
 )
 from .events import Event, EventType
-from .config import Config
+from .config import Config, ClientConfig
 
 __all__ = [
     "HotPlexClient",
+    "OpenCodeClient",
     "HotPlexError",
     "ConnectionError",
     "TimeoutError",
@@ -30,4 +32,5 @@ __all__ = [
     "Event",
     "EventType",
     "Config",
+    "ClientConfig",
 ]

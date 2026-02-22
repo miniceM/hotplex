@@ -118,6 +118,24 @@ client = HotPlexClient(config=config)
 | `error`         | Error occurred           |
 | `danger_block`  | Blocked by WAF           |
 
+## 🌐 OpenCode (HTTP/SSE) Support
+
+If you prefer using the OpenCode-compatible HTTP/SSE protocol instead of WebSockets:
+
+```python
+from hotplex import OpenCodeClient, Config
+
+client = OpenCodeClient(url="http://localhost:8080")
+
+for event in client.execute_stream(
+    prompt="Hello!",
+    config=Config(session_id="my-sse-session")
+):
+    print(f"{event.type}: {event.data}")
+```
+
+Note: Requires `sseclient-py` and `requests`.
+
 ## License
 
 MIT
