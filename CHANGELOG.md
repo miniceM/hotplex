@@ -1,6 +1,6 @@
-## [v1.0.0] - 2026-02-23
+## [v0.10.0] - 2026-02-23
 
-### 🚀 ChatApps-as-a-Service Milestone (v1.0.0)
+### 🚀 ChatApps-as-a-Service Milestone (v0.10.0)
 
 This major release marks the transformation of HotPlex into a comprehensive **ChatApps-as-a-Service** platform. We've introduced a centralized engine integration layer that enables seamless connections between top-tier AI agents and various chat platforms (DingTalk, Discord, Slack, Telegram, WhatsApp).
 
