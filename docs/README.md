@@ -26,6 +26,10 @@ Deep-dive guides for specific AI CLI agents supported by HotPlex.
 - **[OpenCode Provider](providers/opencode.md)**: Integration with the OpenCode CLI ecosystem.
 - **Aider Integration** (Removed in v0.8.3)
 
+## 💬 ChatApps Integration
+ **[ChatApps Guide](chatapps-guide.md)**: User manual for chat platform integration.
+ **[ChatApps Architecture](chatapps-design.md)**: Technical design details.
+
 ## 🛠️ Developer Migration
 - **[Migrating to v0.9.0](migration/migration-guide-v0.9.0.md)** (Latest)
 - **[Migrating to v0.8.0](migration/migration-guide-v0.8.0.md)**
