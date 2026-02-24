@@ -56,7 +56,9 @@ export default defineConfig({
             { text: 'WebSocket Protocol', link: '/guide/websocket' },
             { text: 'OpenCode HTTP/SSE', link: '/guide/opencode-http' },
             { text: 'ChatApps Overview', link: '/guide/chatapps' },
-            { text: '└─ DingTalk Deep Dive', link: '/guide/chatapps-dingtalk' }
+            { text: '└─ DingTalk Deep Dive', link: '/guide/chatapps-dingtalk' },
+            { text: '└─ Slack Deep Dive', link: '/guide/chatapps-slack' },
+            { text: '└─ Slack Gap Analysis', link: '/guide/slack-gap-analysis' }
           ]
         },
         {
