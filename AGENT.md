@@ -56,8 +56,10 @@ HotPlex follows the [Uber Go Style Guide](https://github.com/uber-go/guide/blob/
 
 See **[docs/uber-go-style-guide.md](docs/uber-go-style-guide.md)** for the TOP 18 critical guidelines with examples.
 
-**Quick Reference — Must Follow:**
-
+| Category        | Key Rules                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **Concurrency** | Zero-value mutexes • Defer cleanup • Channel size 0/1 • No fire-and-forget goroutines • Use `go.uber.org/atomic`   |
+| **Errors**      | Never panic • Static errors via `var` • Wrap with `%w` • Handle errors once • Safe type assertions                 |
 | **Quality**     | Verify interface compliance • No pointers to interfaces • Dependency injection • Use `time.Duration` • Consistency |
 
 ### 2.3 Linter & Code Integrity
@@ -140,7 +142,7 @@ When needing to reference or learn from OpenClaw's implementation, the source co
 
 ---
 
-## 7. Operational Safety (数据安全)
+## 7. Operational Safety
 
 **This codebase belongs to the user. Data loss is non-negotiable.**
 
@@ -163,5 +165,16 @@ If the USER asks you to `[Implement]`, `[Extend]`, or `[Fix]` something in HotPl
 3. **Verify**: Check this `AGENT.md` for architectural constraints.
 4. **Execute**: Write the code in **atomic steps**. 
 5. **Auto-Clean**: After each major step, check if it's a good time to commit.
-6. **Validate**: Ensure it builds (`go build ./...`).
-6. **GitHub Operations**: Prioritize using the `gh` command or MCP tools for any GitHub-related actions (Releases, PRs, Runs, Issues).
+6. **Validate**: Ensure it builds (`go build ./...`) and tests pass.
+7. **GitHub Operations**: Prioritize using the `gh` command for any GitHub-related actions (Releases, PRs, Runs).
+
+---
+
+## 9. Quick Reference Summary
+
+| Category        | Requirement                                                                |
+| :-------------- | :------------------------------------------------------------------------- |
+| **Concurrency** | `sync.RWMutex` required • `defer mu.Unlock()` immediately • PGID isolation |
+| **Safety**      | `git status` check mandatory • No lazy deletions • No WAF bypass           |
+| **Code**        | SOLID • Uber Go Style • `slog` structured logging                          |
+| **Testing**     | `go test -race` required • Mock I/O • No code without tests                |
