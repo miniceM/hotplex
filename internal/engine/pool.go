@@ -252,6 +252,17 @@ func (sm *SessionPool) startSession(ctx context.Context, sessionID string, cfg S
 	args := sm.buildCLIArgs(providerSessionID, sessLog, prompt, cfg.TaskInstructions)
 	cmd := exec.CommandContext(sessCtx, sm.cliPath, args...)
 	// Resolve relative paths (like ".") to absolute paths
+	// First clean the path to resolve . and .. elements, then convert to absolute
+	if cfg.WorkDir == "." || !filepath.IsAbs(cfg.WorkDir) {
+		cleaned := filepath.Clean(cfg.WorkDir)
+		if absPath, err := filepath.Abs(cleaned); err == nil {
+			cmd.Dir = absPath
+		} else {
+			cmd.Dir = cleaned // Fallback to cleaned path if error
+		}
+	} else {
+		cmd.Dir = filepath.Clean(cfg.WorkDir)
+	}
 	if cfg.WorkDir == "." || !filepath.IsAbs(cfg.WorkDir) {
 		if absPath, err := filepath.Abs(cfg.WorkDir); err == nil {
 			cmd.Dir = absPath
