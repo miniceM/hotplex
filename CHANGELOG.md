@@ -1,5 +1,29 @@
 # CHANGELOG.md
 
+## [v0.11.3] - 2026-02-25
+
+### 🐛 Bug Fixes
+
+This patch release fixes documentation build issues and CI workflow triggers.
+
+### Fixed
+- **VitePress Sidebar Configuration**: Added missing `text` properties in sidebar config that caused build failures
+- **ChatApps Documentation Links**: Repaired malformed markdown links in chatapps-guide.md
+- **Docs Sync Script**: Added `chatapps-dingtalk-analysis.md` to sync script to fix dead link errors
+- **CI Workflow Triggers**: Extended deploy-docs workflow to trigger on `docs/**` and `scripts/sync_docs.sh` changes
+
+### Technical Details
+- **Files Changed**: 4 files
+- **Test Coverage**: All tests passing
+
+### Contributors
+- [@hrygo](https://github.com/hrygo)
+
+### Related
+- **Release**: [v0.11.3](https://github.com/hrygo/hotplex/releases/tag/v0.11.3)
+
+---
+
 ## [v0.11.2] - 2026-02-25
 
 ### 🐛 Bug Fixes
