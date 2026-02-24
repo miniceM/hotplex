@@ -7,6 +7,8 @@ on:
       - 'v*'
     paths:
       - 'docs-site/**'
+      - 'docs/**'
+      - 'scripts/sync_docs.sh'
   workflow_dispatch:
 
 permissions:
