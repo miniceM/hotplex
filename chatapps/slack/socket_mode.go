@@ -155,6 +155,7 @@ func (s *SocketModeConnection) readLoop() {
 	defer func() {
 		s.mu.Lock()
 		s.connected = false
+		s.conn = nil // Clear the connection on exit
 		s.mu.Unlock()
 
 		s.logger.Info("WebSocket read loop stopped")
@@ -170,8 +171,6 @@ func (s *SocketModeConnection) readLoop() {
 		_, message, err := s.conn.ReadMessage()
 		if err != nil {
 			s.logger.Error("Error reading message", "error", err)
-
-			s.mu.RLock()
 
 			s.mu.RLock()
 			connected := s.connected
@@ -215,7 +214,7 @@ func (s *SocketModeConnection) handleMessage(data []byte) {
 		s.handleEventCallback(msg.Body)
 
 	case "ping":
-		s.sendPong()
+		_ = s.sendPong()
 
 	case "pong":
 		// Keep-alive acknowledged
