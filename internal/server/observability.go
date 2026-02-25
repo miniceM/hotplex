@@ -141,4 +141,21 @@ func (h *MetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, _ = fmt.Fprintf(w, "# HELP hotplex_dangers_blocked Total number of dangerous operations blocked\n")
 	_, _ = fmt.Fprintf(w, "# TYPE hotplex_dangers_blocked counter\n")
 	_, _ = fmt.Fprintf(w, "hotplex_dangers_blocked %d\n", snapshot.DangersBlocked)
+
+	// Slack permission metrics
+	_, _ = fmt.Fprintf(w, "# HELP hotplex_slack_permission_allowed Total number of Slack requests allowed\n")
+	_, _ = fmt.Fprintf(w, "# TYPE hotplex_slack_permission_allowed counter\n")
+	_, _ = fmt.Fprintf(w, "hotplex_slack_permission_allowed %d\n", snapshot.SlackPermissionAllowed)
+
+	_, _ = fmt.Fprintf(w, "# HELP hotplex_slack_permission_blocked_user Total number of Slack requests blocked by user policy\n")
+	_, _ = fmt.Fprintf(w, "# TYPE hotplex_slack_permission_blocked_user counter\n")
+	_, _ = fmt.Fprintf(w, "hotplex_slack_permission_blocked_user %d\n", snapshot.SlackPermissionBlockedUser)
+
+	_, _ = fmt.Fprintf(w, "# HELP hotplex_slack_permission_blocked_dm Total number of Slack requests blocked by DM policy\n")
+	_, _ = fmt.Fprintf(w, "# TYPE hotplex_slack_permission_blocked_dm counter\n")
+	_, _ = fmt.Fprintf(w, "hotplex_slack_permission_blocked_dm %d\n", snapshot.SlackPermissionBlockedDM)
+
+	_, _ = fmt.Fprintf(w, "# HELP hotplex_slack_permission_blocked_mention Total number of Slack requests blocked by mention policy\n")
+	_, _ = fmt.Fprintf(w, "# TYPE hotplex_slack_permission_blocked_mention counter\n")
+	_, _ = fmt.Fprintf(w, "hotplex_slack_permission_blocked_mention %d\n", snapshot.SlackPermissionBlockedMention)
 }

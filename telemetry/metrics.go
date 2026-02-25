@@ -14,7 +14,13 @@ type Metrics struct {
 	toolsInvoked    int64
 	dangersBlocked  int64
 	requestDuration time.Duration
-	mu              sync.RWMutex
+
+	// Slack permission metrics
+	slackPermissionAllowed        int64
+	slackPermissionBlockedUser    int64
+	slackPermissionBlockedDM      int64
+	slackPermissionBlockedMention int64
+	mu                            sync.RWMutex
 }
 
 var (
@@ -75,6 +81,12 @@ type MetricsSnapshot struct {
 	ToolsInvoked    int64
 	DangersBlocked  int64
 	RequestDuration time.Duration
+
+	// Slack permission metrics
+	SlackPermissionAllowed        int64
+	SlackPermissionBlockedUser    int64
+	SlackPermissionBlockedDM      int64
+	SlackPermissionBlockedMention int64
 }
 
 func (m *Metrics) Snapshot() MetricsSnapshot {
@@ -87,7 +99,39 @@ func (m *Metrics) Snapshot() MetricsSnapshot {
 		ToolsInvoked:    m.toolsInvoked,
 		DangersBlocked:  m.dangersBlocked,
 		RequestDuration: m.requestDuration,
+
+		// Slack permission metrics
+		SlackPermissionAllowed:        m.slackPermissionAllowed,
+		SlackPermissionBlockedUser:    m.slackPermissionBlockedUser,
+		SlackPermissionBlockedDM:      m.slackPermissionBlockedDM,
+		SlackPermissionBlockedMention: m.slackPermissionBlockedMention,
 	}
+}
+
+// Slack Permission Metrics
+
+func (m *Metrics) IncSlackPermissionAllowed() {
+	m.mu.Lock()
+	m.slackPermissionAllowed++
+	m.mu.Unlock()
+}
+
+func (m *Metrics) IncSlackPermissionBlockedUser() {
+	m.mu.Lock()
+	m.slackPermissionBlockedUser++
+	m.mu.Unlock()
+}
+
+func (m *Metrics) IncSlackPermissionBlockedDM() {
+	m.mu.Lock()
+	m.slackPermissionBlockedDM++
+	m.mu.Unlock()
+}
+
+func (m *Metrics) IncSlackPermissionBlockedMention() {
+	m.mu.Lock()
+	m.slackPermissionBlockedMention++
+	m.mu.Unlock()
 }
 
 func InitMetrics(logger *slog.Logger) {

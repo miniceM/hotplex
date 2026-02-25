@@ -104,6 +104,7 @@ provider:
 # Engine Configuration
 # -----------------------------------------------------------------------------
 #
+engine:
   work_dir: ~/HotPlex
 
   # ---------------------------------------------------------------------------
@@ -375,6 +376,71 @@ security:
   # DEFAULT: true
   verify_signature: true
 
+  # -------------------------------------------------------------------------
+  # Permission Policy - Access Control
+  # -------------------------------------------------------------------------
+  # Control who can interact with the bot
+  #
+  # DM_POLICY: Direct Message access control
+  #   "allow"   - Allow all DMs (default)
+  #   "pairing" - Only allow users who have active DM conversations with bot
+  #   "block"   - Block all DMs
+  #
+  # GROUP_POLICY: Channel/Group access control
+  #   "allow"   - Allow all group messages (default)
+  #   "mention" - Only process when bot is @mentioned
+  #   "block"   - Block all group messages
+  #
+  # ALLOWED_USERS: Whitelist of user IDs (optional)
+  #   If set, only these users can interact with the bot
+  #   Format: ["U1234567890", "U0987654321"]
+  #
+  # BLOCKED_USERS: Blacklist of user IDs (optional)
+  #   These users cannot interact with the bot
+  #   Format: ["U1111111111", "U2222222222"]
+  #
+  # BOT_USER_ID: Bot's Slack user ID (required for mention detection)
+  #   Find it: Slack workspace → Apps → Your App → About section
+  #   Format: "U1234567890"
+  #
+  # EXAMPLES:
+  #   1. Open access (default):
+  #      dm_policy: "allow"
+  #      group_policy: "allow"
+  #
+  #   2. Mention-only in channels:
+  #      dm_policy: "allow"
+  #      group_policy: "mention"
+  #      bot_user_id: "U1234567890"
+  #
+  #   3. Restricted access (whitelist):
+  #      allowed_users: ["U1234567890", "U0987654321"]
+  #
+  #   4. Block specific users:
+  #      blocked_users: ["U1111111111"]
+  #
+  # METRICS:
+  #   Permission metrics are tracked automatically:
+  #   - slack_permission_allowed: Count of allowed requests
+  #   - slack_permission_blocked_user: Count blocked by user policy
+  #   - slack_permission_blocked_dm: Count blocked by DM policy
+  #   - slack_permission_blocked_mention: Count blocked by mention policy
+  #
+  permission:
+    # DM access policy
+    dm_policy: allow
+    
+    # Group/channel access policy
+    group_policy: allow
+    
+    # Bot user ID for mention detection
+    bot_user_id: "U0AGR5U9JMB"
+    
+    # Whitelist (empty = allow all except blocked)
+    allowed_users: []
+    
+    # Blacklist
+    blocked_users: []
 # -----------------------------------------------------------------------------
 # SECURITY: ACKNOWLEDGMENT RETRY MECHANISM (Socket Mode)
 # -----------------------------------------------------------------------------

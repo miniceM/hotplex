@@ -51,6 +51,21 @@ func (c *ProcessorChain) AddProcessor(processor MessageProcessor) {
 	c.sortProcessorsLocked()
 }
 
+// SetAggregatorSender sets the sender for MessageAggregatorProcessor if present
+func (c *ProcessorChain) SetAggregatorSender(sender AggregatedMessageSender) {
+	c.mu.RLock()
+	processors := make([]MessageProcessor, len(c.processors))
+	copy(processors, c.processors)
+	c.mu.RUnlock()
+
+	for _, p := range processors {
+		if aggregator, ok := p.(*MessageAggregatorProcessor); ok {
+			aggregator.SetSender(sender)
+			return
+		}
+	}
+}
+
 // Process executes all processors in order
 func (c *ProcessorChain) Process(ctx context.Context, msg *base.ChatMessage) (*base.ChatMessage, error) {
 	if msg == nil {

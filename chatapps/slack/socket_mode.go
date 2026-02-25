@@ -323,6 +323,14 @@ func (s *SocketModeConnection) handleMessage(data []byte) {
 			s.logger.Warn("events_api with empty payload", "raw_message", string(data))
 		}
 
+	case "slash_commands":
+		// Slash commands are sent as direct message type in Socket Mode
+		s.logger.Debug("slash_commands received", "envelope_id", msg.EnvelopeID)
+		if len(msg.Payload) > 0 {
+			s.handleSlashCommands(msg.Payload, msg.EnvelopeID)
+		} else {
+			s.logger.Warn("slash_commands with empty payload", "raw_message", string(data))
+		}
 	case "event_callback":
 		// Fallback for HTTP webhook compatibility
 		s.handleEventCallback(msg.Body)
@@ -394,6 +402,37 @@ func (s *SocketModeConnection) handleEventsAPI(payload json.RawMessage, envelope
 
 	// The payload IS the event_callback structure, pass it directly
 	s.handleEventCallback(payload)
+}
+
+// handleSlashCommands processes slash_commands messages from Socket Mode
+func (s *SocketModeConnection) handleSlashCommands(payload json.RawMessage, envelopeID string) {
+	// Send ACK to Slack
+	if envelopeID != "" {
+		if err := s.sendACKWithRetry(envelopeID, 3, 1*time.Second); err != nil {
+			s.logger.Error("Failed to send ACK for slash command", "envelope_id", envelopeID, "error", err)
+		}
+	}
+
+	// Parse slash command payload
+	var slashData map[string]any
+	if err := json.Unmarshal(payload, &slashData); err != nil {
+		s.logger.Error("Failed to parse slash command", "error", err)
+		return
+	}
+
+	s.logger.Debug("Slash command parsed", "command", slashData["command"])
+
+	// Call registered handler if exists
+	s.mu.RLock()
+	handler, exists := s.handlers["slash_commands"]
+	s.mu.RUnlock()
+
+	if exists {
+		// Pass the raw payload to the handler
+		handler("slash_commands", payload)
+	} else {
+		s.logger.Warn("No handler registered for slash_commands")
+	}
 }
 
 // sendACKWithRetry sends an ACK with exponential backoff retry

@@ -549,6 +549,15 @@ func (r *Engine) StopSession(sessionID string, reason string) error {
 	return r.manager.TerminateSession(sessionID)
 }
 
+// GetSession retrieves an active session by sessionID.
+// Returns the session and true if found, or nil and false if not found.
+func (r *Engine) GetSession(sessionID string) (*intengine.Session, bool) {
+	if r.manager == nil {
+		return nil, false
+	}
+	return r.manager.GetSession(sessionID)
+}
+
 // SetDangerAllowPaths sets the allowed safe paths for the danger detector.
 func (r *Engine) SetDangerAllowPaths(paths []string) {
 	r.dangerDetector.SetAllowPaths(paths)

@@ -24,6 +24,46 @@ This patch release fixes documentation build issues and CI workflow triggers.
 
 ---
 
+## [v0.11.4] - 2026-02-25
+
+### ✨ New Features
+
+This minor release adds Slack Slash Command support for session context management.
+
+### Added
+- **Slack Slash Command `/clear`**: Clear conversation context and start fresh
+  - User types `/clear` in Slack
+  - HotPlex sends `/clear` to Claude Code via stdin
+  - Claude Code clears conversation context
+  - User sees ephemeral confirmation: "✅ Context cleared. Ready for fresh start!"
+  - Session continues (no restart needed)
+  - `CLAUDE.md` project instructions are preserved
+- **Slack App Configuration**: Added `/clear` command setup to Slack documentation
+- **Engine.GetSession()**: New public method for session retrieval
+
+### Technical Details
+- **Files Changed**: 5 files
+  - `engine/runner.go` - Added GetSession() method
+  - `chatapps/slack/adapter.go` - Added slash command handling
+  - `chatapps/slack/slash_command_test.go` - Added unit tests
+  - `chatapps/setup.go` - Wired up Engine for slash commands
+  - `docs/chatapps/chatapps-slack.md` - Added slash command documentation
+- **Test Coverage**: All tests passing
+
+### Documentation
+- Updated `docs/chatapps/chatapps-slack.md` with Slash Commands section
+- Added Slack App configuration steps for `/clear` command
+- Included local development guide with ngrok setup
+
+### Contributors
+- [@hrygo](https://github.com/hrygo)
+
+### Related
+- **Issue**: [#40](https://github.com/hrygo/hotplex/issues/40)
+- **Documentation**: [Slack Slash Commands](docs/chatapps/chatapps-slack.md#10-slash-commands)
+
+---
+
 ## [v0.11.2] - 2026-02-25
 
 ### 🐛 Bug Fixes

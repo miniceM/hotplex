@@ -4,7 +4,15 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 )
+
+// pairingState holds runtime pairing state with thread-safe access
+type pairingState struct {
+	mu    sync.RWMutex
+	once  sync.Once
+	users map[string]bool
+}
 
 type Config struct {
 	BotToken      string
@@ -32,12 +40,23 @@ type Config struct {
 	AllowedUsers []string
 	// BlockedUsers: List of user IDs who cannot interact with the bot (blacklist)
 	BlockedUsers []string
+	// BotUserID: Bot's user ID (e.g., "U1234567890") - used for mention detection
+	BotUserID string
+
+	// SlashCommandRateLimit: Maximum requests per second per user for slash commands
+	// Default: 10.0 requests/second
+	SlashCommandRateLimit float64
+
+	// pairing holds runtime pairing state (pointer for thread safety)
+	pairing *pairingState
 }
 
-// Token format patterns
+// Token format patterns - supports both legacy 3-part and new 4-part Slack token formats
 var (
-	botTokenRegex      = regexp.MustCompile(`^xoxb-[0-9]+-[0-9]+-[a-zA-Z0-9]+$`)
-	appTokenRegex      = regexp.MustCompile(`^xapp-[0-9]+-[0-9]+-[a-zA-Z0-9]+$`)
+	botTokenRegex = regexp.MustCompile(`^xoxb-[0-9]+-[0-9]+-[a-zA-Z0-9]+$`)
+	// Legacy: xapp-{num}-{num}-{alnum}
+	// New:      xapp-{num}-{alnum}-{num}-{alnum} (Slack updated format in 2025+)
+	appTokenRegex      = regexp.MustCompile(`^xapp-[0-9]+-[a-zA-Z0-9]+-[0-9]+-[a-zA-Z0-9]+$|^xapp-[0-9]+-[0-9]+-[a-zA-Z0-9]+$`)
 	signingSecretRegex = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
 )
 
@@ -122,8 +141,8 @@ func (c *Config) ShouldProcessChannel(channelType, channelID string) bool {
 		case "block":
 			return false
 		case "pairing":
-			// TODO: Check if user is paired
-			return true
+			// Check if user has active DM pairing with bot
+			return c.isPaired(channelID)
 		default: // "allow"
 			return true
 		}
@@ -132,11 +151,54 @@ func (c *Config) ShouldProcessChannel(channelType, channelID string) bool {
 		case "block":
 			return false
 		case "mention":
-			// TODO: Check if bot was mentioned
+			// Mention check is done at message level, not channel level
+			// Return true here and check message text in adapter
 			return true
 		default: // "allow"
 			return true
 		}
 	}
 	return true
+}
+
+// isPaired checks if a user has an active DM conversation with the bot
+// Returns true only if the user has been explicitly marked as paired
+func (c *Config) isPaired(userID string) bool {
+	if c.pairing == nil {
+		return false
+	}
+	c.pairing.mu.RLock()
+	defer c.pairing.mu.RUnlock()
+	if c.pairing.users == nil {
+		return false
+	}
+	return c.pairing.users[userID]
+}
+
+// MarkPaired marks a user as having an active DM with the bot
+func (c *Config) MarkPaired(userID string) {
+	// Initialize pairing state once (thread-safe)
+	if c.pairing == nil {
+		c.pairing = &pairingState{}
+	}
+	c.pairing.once.Do(func() {
+		c.pairing.users = make(map[string]bool)
+	})
+	c.pairing.mu.Lock()
+	defer c.pairing.mu.Unlock()
+	c.pairing.users[userID] = true
+}
+
+// ContainsBotMention checks if message text contains a bot mention
+// Slack mention format: <@U1234567890> or <!here> or <!channel>
+// Uses regex for exact matching to prevent false positives
+func (c *Config) ContainsBotMention(text string) bool {
+	if c.BotUserID == "" {
+		return false
+	}
+	// Exact match for bot user mention: <@BOT_USER_ID>
+	// Pattern matches <@USERID> or <!@USERID> format
+	mentionPattern := "<@!?" + regexp.QuoteMeta(c.BotUserID) + ">"
+	matched, _ := regexp.MatchString(mentionPattern, text)
+	return matched
 }

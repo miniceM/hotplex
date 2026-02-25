@@ -238,6 +238,130 @@ Socket Mode 要求必须在 3 秒内确认收到消息：
 
 ---
 
+## 7. 权限策略 (Permission Policy)
+
+HotPlex Slack 适配器提供细粒度的权限控制，允许管理员配置谁能与机器人交互。
+
+### 7.1 访问控制层级
+
+权限检查按以下顺序执行：
+
+```
+1. BlockedUsers (黑名单) → 优先拒绝
+2. AllowedUsers (白名单) → 如果配置，仅允许列表内用户
+3. DMPolicy → DM 消息策略
+4. GroupPolicy → 群组/频道消息策略
+5. Mention 检测 → 如果 GroupPolicy="mention"
+```
+
+### 7.2 DM 策略 (DMPolicy)
+
+控制用户与机器人的直接消息：
+
+| 策略值 | 说明 | 适用场景 |
+|--------|------|----------|
+| `allow` (默认) | 允许所有 DM | 公开机器人 |
+| `pairing` | 仅允许活跃对话用户 | 需要建立关系的场景 |
+| `block` | 阻止所有 DM | 仅允许群组交互 |
+
+**Pairing 策略说明**：
+- 当用户首次发送 DM 时，自动标记为"已配对"
+- 配对状态存储在内存中（重启后重置）
+- 适合需要建立持续对话关系的场景
+
+### 7.3 群组策略 (GroupPolicy)
+
+控制机器人在频道/群组中的响应行为：
+
+| 策略值 | 说明 | 适用场景 |
+|--------|------|----------|
+| `allow` (默认) | 响应所有群消息 | 活跃助手 |
+| `mention` | 仅响应 @提及 | 避免打扰，按需响应 |
+| `block` | 阻止所有群消息 | 仅允许 DM |
+
+**Mention 检测**：
+- 检测消息中是否包含 `<@BOT_USER_ID>` 格式
+- 需要在配置中设置 `bot_user_id`
+
+### 7.4 配置示例
+
+#### 示例 1: 开放访问（默认）
+```yaml
+security:
+  permission:
+    dm_policy: allow
+    group_policy: allow
+```
+
+#### 示例 2: 仅响应提及
+```yaml
+security:
+  permission:
+    dm_policy: allow
+    group_policy: mention
+    bot_user_id: "U1234567890"  # 必填！从 Slack App 页面获取
+```
+
+#### 示例 3: 白名单模式
+```yaml
+security:
+  permission:
+    allowed_users:
+      - "U1234567890"
+      - "U0987654321"
+    dm_policy: allow
+    group_policy: mention
+    bot_user_id: "U1234567890"
+```
+
+#### 示例 4: 阻止特定用户
+```yaml
+security:
+  permission:
+    blocked_users:
+      - "U1111111111"  # 骚扰用户
+```
+
+### 7.5 获取 Bot User ID
+
+1. 访问 Slack App 管理页面
+2. 进入 **Basic Information** → **App ID**
+3. 或在频道中 `/invite @your_bot` 后右键机器人头像获取
+4. 格式：`U` 开头 + 9 位字母数字（如 `U1234567890`）
+
+### 7.6 监控指标
+
+权限决策指标自动收集：
+
+| 指标名 | 说明 |
+|--------|------|
+| `slack_permission_allowed` | 允许请求数 |
+| `slack_permission_blocked_user` | 被黑名单/白名单阻止数 |
+| `slack_permission_blocked_dm` | 被 DM 策略阻止数 |
+| `slack_permission_blocked_mention` | 被 Mention 策略阻止数 |
+
+**查看指标**（通过 Prometheus `/metrics` 端点）：
+```bash
+curl http://localhost:8080/metrics | grep slack_permission
+```
+
+### 7.7 调试日志
+
+启用 Debug 日志查看详细权限决策：
+```bash
+LOG_LEVEL=debug go run cmd/hotplexd/main.go
+```
+
+**日志示例**：
+```
+DEBUG User blocked user_id=U1111111111 metrics_total_blocked=3
+DEBUG Channel blocked by policy channel_type=dm channel_id=D123456
+DEBUG Message ignored - bot not mentioned channel_type=channel policy=mention metrics_blocked=1
+```
+
+---
+
+## 8. 系统提示词配置
 ## 7. 系统提示词配置
 
 系统提示词定义在 `chatapps/configs/slack.yaml` 中，决定了 AI 的人格与行为边界。
@@ -305,103 +429,13 @@ LOG_LEVEL=debug make run
 adapter.SendToChannel(ctx, "CHANNEL_ID", "Test Message", "")
 ```
 
-### 9.3 清空对话上下文 (/clear 命令)
-
-使用 `/clear` slash command 可以清除当前会话的对话上下文，无需重启服务。
-
-**配置步骤**:
-1. 访问 Slack App 管理后台 (https://api.slack.com/apps)
-2. 左侧菜单 → **Slash Commands** → **Create New Command**
-3. 填写配置:
-   ```
-   Command: /clear
-   Description: Clear conversation context and start fresh
-   Request URL: https://your-domain.com/webhook/slack
-   Short Description: Clear session context
-   ```
-4. 点击 **Create** 保存
-
-**用法**:
-- 在 Slack 中向机器人发送：`/clear`
-- 机器人回复临时确认消息（仅发送者可见）
-
-**效果**:
-- ✅ 清除 Claude Code 的对话上下文
-- ✅ 保持相同的 session ID (channel:user)
-- ✅ 保留 CLAUDE.md 项目配置
-- ✅ 无需重启 CLI 进程
-
-**响应消息** (仅发送者可见):
-- 成功：`✅ Context cleared. Ready for fresh start!`
-- 无会话：`ℹ️ No active session found`
-- 错误：`❌ Failed to clear context: [error]`
-
-**适用场景**:
-- 切换任务主题时
-- AI 上下文被污染时
-- 开始全新对话时
-
-**速率限制**:
-- 默认：每用户每分钟 10 次请求
-- 超额时返回：`⚠️ Rate limit exceeded. Please wait a moment.`
-
-### 9.4 断开连接 (/dc 命令)
-
-使用 `/dc` (disconnect) slash command 可以主动断开与 CLI 的连接，**保留对话上下文**。
-
-**配置步骤**:
-1. 访问 Slack App 管理后台 (https://api.slack.com/apps)
-2. 左侧菜单 → **Slash Commands** → **Create New Command**
-3. 填写配置:
-   ```
-   Command: /dc
-   Description: Disconnect from CLI but preserve context
-   Request URL: https://your-domain.com/webhook/slack
-   Short Description: Disconnect from AI CLI
-   ```
-4. 点击 **Create** 保存
-
-**用法**:
-- 在 Slack 中向机器人发送：`/dc`
-- 机器人回复临时确认消息（仅发送者可见）
-
-**效果**:
-- ✅ 终止 CLI 进程及其任务
-- ✅ 保留对话上下文（marker file 不被删除）
-- ✅ 保留 session ID (channel:user)
-- ✅ 下次消息将恢复对话（resume）
-
-**响应消息** (仅发送者可见):
-- 成功：`🔌 Disconnected from CLI. Context preserved. Next message will resume.`
-- 无会话：`ℹ️ No active session found`
-- 错误：`❌ Failed to disconnect: [error]`
-
-**适用场景**:
-- 需要暂停对话，稍后继续
-- CLI 进程占用资源，需要释放
-- 暂时不需要 AI 响应，但想保留上下文
-
-**与 /clear 的区别**:
-| 命令 | CLI 进程 | marker file | Claude 内存 | 下次消息行为 |
-|------|---------|-----------|-----------|-------------|
-| `/clear` | 保持运行 | 保留 | **清空** | 进程继续，Claude 忘记对话 |
-| `/dc` | **终止** | 保留 | **保留** | 重启进程，Claude 恢复对话 |
-
-**重要说明**:
-- `/dc` 会终止 CLI 进程释放资源，但**保留对话历史**
-- 下次发送消息时，会自动恢复之前的对话（使用 `--resume` 模式）
-- 如果要**完全清除对话**并释放资源，请连续使用：先 `/clear` 清除记忆，再 `/dc` 终止进程
-
-**速率限制**:
-- 默认：每用户每分钟 10 次请求
-- 超额时返回：`⚠️ Rate limit exceeded. Please wait a moment.`
 ---
 
 ## 10. 相关资源
 
 - [Slack API 官方文档](https://api.slack.com/)
 - [Socket Mode 规格说明](https://api.slack.com/apis/socket-mode)
-- [HotPlex 架构概览](./chatapps-guide.md)
+- [HotPlex 架构概览](/guide/chatapps.md)
 
 ---
 

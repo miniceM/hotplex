@@ -64,7 +64,7 @@ func Setup(ctx context.Context, logger *slog.Logger) (http.Handler, *AdapterMana
 			if mode == "" {
 				mode = "http" // default to http
 			}
-			return slack.NewAdapter(slack.Config{
+			return slack.NewAdapter(&slack.Config{
 				BotToken:      token,
 				AppToken:      os.Getenv("SLACK_APP_TOKEN"),
 				SigningSecret: os.Getenv("SLACK_SIGNING_SECRET"),
@@ -130,6 +130,12 @@ func setupPlatform(
 
 	// 2. Create Adapter
 	adapter := adapterFactory(pc)
+
+	// Wire up Engine for slash command support (Slack-specific for now)
+	// Use type assertion since SetEngine is not in ChatAdapter interface
+	if slackAdapter, ok := adapter.(*slack.Adapter); ok {
+		slackAdapter.SetEngine(eng)
+	}
 
 	// 3. Create EngineMessageHandler
 	msgHandler := NewEngineMessageHandler(eng, manager,

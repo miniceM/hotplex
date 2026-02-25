@@ -127,6 +127,9 @@ main() {
     # Create output directory
     mkdir -p "$OUTPUT_DIR"
     
+    # Also handle HotPlex logo and Author avatar if they exist in standard paths
+    # (Optional: these could be merged into the loop if we pass multiple directories)
+    
     # Print header
     echo ""
     echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -144,10 +147,23 @@ main() {
     echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     
-    # Convert each SVG
+    # Convert each SVG in SRC_DIR
     for svg_file in "$SRC_DIR"/*.svg; do
         if [ -f "$svg_file" ]; then
             convert_svg "$svg_file"
+        fi
+    done
+
+    # Specifically convert project-specific assets if found
+    local EXTRA_ASSETS=(
+        "docs-site/public/author-avatar.svg"
+        "docs-site/public/logo.svg"
+        ".github/assets/hotplex-logo.svg"
+    )
+
+    for asset in "${EXTRA_ASSETS[@]}"; do
+        if [ -f "$asset" ]; then
+            convert_svg "$asset"
         fi
     done
     

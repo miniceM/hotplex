@@ -15,11 +15,13 @@ import (
 	"time"
 
 	"github.com/hrygo/hotplex/chatapps/base"
+	"github.com/hrygo/hotplex/engine"
+	"github.com/hrygo/hotplex/telemetry"
 )
 
 type Adapter struct {
 	*base.Adapter
-	config              Config
+	config              *Config
 	eventPath           string
 	interactivePath     string
 	slashCommandPath    string
@@ -27,9 +29,11 @@ type Adapter struct {
 	webhook             *base.WebhookRunner
 	socketMode          *SocketModeConnection
 	slashCommandHandler func(cmd SlashCommand)
+	eng                 *engine.Engine
+	rateLimiter         *SlashCommandRateLimiter
 }
 
-func NewAdapter(config Config, logger *slog.Logger, opts ...base.AdapterOption) *Adapter {
+func NewAdapter(config *Config, logger *slog.Logger, opts ...base.AdapterOption) *Adapter {
 	// Validate config
 	if err := config.Validate(); err != nil {
 		logger.Error("Invalid Slack config", "error", err)
@@ -42,6 +46,7 @@ func NewAdapter(config Config, logger *slog.Logger, opts ...base.AdapterOption) 
 		slashCommandPath: "/slack",
 		sender:           base.NewSenderWithMutex(),
 		webhook:          base.NewWebhookRunner(logger),
+		rateLimiter:      NewSlashCommandRateLimiterWithConfig(config.SlashCommandRateLimit, rateBurst),
 	}
 
 	// Initialize Socket Mode if configured
@@ -56,6 +61,8 @@ func NewAdapter(config Config, logger *slog.Logger, opts ...base.AdapterOption) 
 		a.socketMode.RegisterHandler("message", a.handleSocketModeEvent)
 		// "app_mention" handles @mentions in channels
 		a.socketMode.RegisterHandler("app_mention", a.handleSocketModeEvent)
+		// "slash_commands" handles slash commands (/clear, /dc, etc.)
+		a.socketMode.RegisterHandler("slash_commands", a.handleSocketModeSlashCommand)
 	}
 
 	handlers := make(map[string]http.HandlerFunc)
@@ -82,6 +89,11 @@ func NewAdapter(config Config, logger *slog.Logger, opts ...base.AdapterOption) 
 	}
 
 	return a
+}
+
+// SetEngine sets the engine for the adapter (used for slash commands)
+func (a *Adapter) SetEngine(eng *engine.Engine) {
+	a.eng = eng
 }
 
 func (a *Adapter) SendMessage(ctx context.Context, sessionID string, msg *base.ChatMessage) error {
@@ -204,6 +216,32 @@ func (a *Adapter) sendFileFromURL(ctx context.Context, payload map[string]any) e
 	return nil
 }
 
+// sendEphemeralMessage sends a message visible only to the user who issued the command
+// via the Slack response_url (typically used in slash command responses)
+func (a *Adapter) sendEphemeralMessage(responseURL, text string) error {
+	payload := map[string]any{
+		"response_type": "ephemeral",
+		"text":          text,
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		a.Logger().Error("Failed to marshal ephemeral message", "error", err)
+		return err
+	}
+
+	resp, err := http.Post(responseURL, "application/json", bytes.NewReader(body))
+	if err != nil {
+		a.Logger().Error("Failed to send ephemeral message", "error", err)
+		return err
+	}
+	defer func() {
+		_ = resp.Body.Close() // Ignore close error on response body
+	}()
+
+	return nil
+}
+
 // extractChannelID extracts channel_id from session or message metadata
 func (a *Adapter) extractChannelID(_ string, msg *base.ChatMessage) string {
 	if msg.Metadata == nil {
@@ -238,6 +276,7 @@ type MessageEvent struct {
 	SubType     string `json:"subtype,omitempty"`
 	ThreadTS    string `json:"thread_ts,omitempty"`      // Thread identifier
 	ParentUser  string `json:"parent_user_id,omitempty"` // Parent message user
+	BotUserID   string `json:"bot_user_id,omitempty"`    // Bot user ID for mentions
 }
 
 func (a *Adapter) handleEvent(w http.ResponseWriter, r *http.Request) {
@@ -316,16 +355,35 @@ func (a *Adapter) handleEventCallback(ctx context.Context, eventData json.RawMes
 
 	// Check user permission
 	if !a.config.IsUserAllowed(msgEvent.User) {
+		telemetry.GetMetrics().IncSlackPermissionBlockedUser()
 		a.Logger().Debug("User blocked", "user_id", msgEvent.User)
 		return
 	}
+	telemetry.GetMetrics().IncSlackPermissionAllowed()
 
 	// Check channel permission
 	if !a.config.ShouldProcessChannel(msgEvent.ChannelType, msgEvent.Channel) {
+		if msgEvent.ChannelType == "dm" {
+			telemetry.GetMetrics().IncSlackPermissionBlockedDM()
+		}
 		a.Logger().Debug("Channel blocked by policy", "channel_type", msgEvent.ChannelType, "channel_id", msgEvent.Channel)
 		return
 	}
-	sessionID := a.GetOrCreateSession(msgEvent.Channel+":"+msgEvent.User, msgEvent.User)
+
+	// Check mention policy for group/channel messages
+	if msgEvent.ChannelType == "channel" || msgEvent.ChannelType == "group" {
+		if a.config.GroupPolicy == "mention" && !a.config.ContainsBotMention(msgEvent.Text) {
+			telemetry.GetMetrics().IncSlackPermissionBlockedMention()
+			a.Logger().Debug("Message ignored - bot not mentioned", "channel_type", msgEvent.ChannelType, "policy", "mention")
+			return
+		}
+	}
+
+	// Mark user as paired for DM policy
+	if msgEvent.ChannelType == "dm" {
+		a.config.MarkPaired(msgEvent.User)
+	}
+	sessionID := a.GetOrCreateSession(msgEvent.User, msgEvent.BotUserID, msgEvent.Channel)
 
 	msg := &base.ChatMessage{
 		Platform:  "slack",
@@ -417,7 +475,20 @@ func (a *Adapter) handleSocketModeEvent(eventType string, data json.RawMessage) 
 		a.Logger().Debug("Channel blocked by policy", "channel_type", msgEvent.ChannelType, "channel_id", msgEvent.Channel)
 		return
 	}
-	sessionID := a.GetOrCreateSession(msgEvent.Channel+":"+msgEvent.User, msgEvent.User)
+
+	// Check mention policy for group/channel messages
+	if msgEvent.ChannelType == "channel" || msgEvent.ChannelType == "group" {
+		if a.config.GroupPolicy == "mention" && !a.config.ContainsBotMention(msgEvent.Text) {
+			a.Logger().Debug("Message ignored - bot not mentioned", "channel_type", msgEvent.ChannelType, "policy", "mention")
+			return
+		}
+	}
+
+	// Mark user as paired for DM policy
+	if msgEvent.ChannelType == "dm" {
+		a.config.MarkPaired(msgEvent.User)
+	}
+	sessionID := a.GetOrCreateSession(msgEvent.User, msgEvent.BotUserID, msgEvent.Channel)
 
 	msg := &base.ChatMessage{
 		Platform:  "slack",
@@ -449,6 +520,41 @@ func (a *Adapter) handleSocketModeEvent(eventType string, data json.RawMessage) 
 	}
 	a.Logger().Info("Forwarding message to handler", "sessionID", sessionID, "content", msg.Content, "subtype", msgEvent.SubType)
 	a.webhook.Run(context.Background(), handler, msg)
+}
+
+// handleSocketModeSlashCommand handles slash commands from Socket Mode
+func (a *Adapter) handleSocketModeSlashCommand(eventType string, data json.RawMessage) {
+	a.Logger().Debug("Socket Mode slash command received")
+
+	// Parse slash command data from Socket Mode
+	// Socket Mode sends slash commands as: {"type": "slash_commands", "command": "/clear", "user_id": "U123", "channel_id": "C123", ...}
+	var slashData map[string]any
+	if err := json.Unmarshal(data, &slashData); err != nil {
+		a.Logger().Error("Parse socket mode slash command failed", "error", err)
+		return
+	}
+
+	// Extract command fields
+	cmd := SlashCommand{
+		Command:     getStringField(slashData, "command"),
+		Text:        getStringField(slashData, "text"),
+		UserID:      getStringField(slashData, "user_id"),
+		ChannelID:   getStringField(slashData, "channel_id"),
+		ResponseURL: getStringField(slashData, "response_url"),
+	}
+
+	a.Logger().Debug("Socket Mode slash command parsed", "command", cmd.Command, "user", cmd.UserID)
+
+	// Process the slash command (same as HTTP handler)
+	go a.processSlashCommand(cmd)
+}
+
+// getStringField extracts a string field from a map[string]any
+func getStringField(data map[string]any, key string) string {
+	if v, ok := data[key].(string); ok {
+		return v
+	}
+	return ""
 }
 
 func (a *Adapter) handleInteractive(w http.ResponseWriter, r *http.Request) {
@@ -657,13 +763,145 @@ func (a *Adapter) handleSlashCommand(w http.ResponseWriter, r *http.Request) {
 		ResponseURL: r.FormValue("response_url"),
 	}
 
-	a.Logger().Debug("Slash command received", "command", cmd.Command, "text", cmd.Text, "user", cmd.UserID)
+	a.Logger().Debug("Slash command received",
+		"command", cmd.Command,
+		"text", cmd.Text,
+		"user", cmd.UserID)
 
-	// Acknowledge immediately
+	// Check rate limit before processing
+	if !a.rateLimiter.Allow(cmd.UserID) {
+		a.Logger().Warn("Rate limit exceeded", "user_id", cmd.UserID)
+		_ = a.sendEphemeralMessage(cmd.ResponseURL, "⚠️ Rate limit exceeded. Please wait a moment.")
+		return
+	}
+	// Acknowledge immediately (Slack requires response within 3 seconds)
 	w.WriteHeader(http.StatusOK)
 
-	// Process in background if handler is set
-	if a.slashCommandHandler != nil {
-		go a.slashCommandHandler(cmd)
+	// Process command in background
+	go a.processSlashCommand(cmd)
+}
+
+// processSlashCommand handles the slash command logic
+func (a *Adapter) processSlashCommand(cmd SlashCommand) {
+	switch cmd.Command {
+	case "/clear":
+		if err := a.handleClearCommand(cmd); err != nil {
+			a.Logger().Error("handleClearCommand failed", "command", cmd.Command, "error", err)
+		}
+	case "/dc":
+		if err := a.handleDisconnectCommand(cmd); err != nil {
+			a.Logger().Error("handleDisconnectCommand failed", "command", cmd.Command, "error", err)
+		}
+	default:
+		a.handleUnknownCommand(cmd)
 	}
+}
+
+// handleClearCommand processes /clear command to reset conversation context
+func (a *Adapter) handleClearCommand(cmd SlashCommand) error {
+	// Check if engine is set
+	if a.eng == nil {
+		a.Logger().Error("Engine is nil")
+		return a.sendEphemeralMessage(cmd.ResponseURL, "❌ Internal error: Engine not initialized")
+	}
+
+	// Find session by matching user_id and channel_id
+	// New key format is "platform:user_id:bot_user_id:channel_id", so we need to search
+	baseSession := a.FindSessionByUserAndChannel(cmd.UserID, cmd.ChannelID)
+	if baseSession == nil {
+		a.Logger().Error("No active session found for /clear",
+			"channel_id", cmd.ChannelID,
+			"user_id", cmd.UserID)
+		return a.sendEphemeralMessage(cmd.ResponseURL, "ℹ️ No active session found")
+	}
+
+	sessionID := baseSession.SessionID
+	a.Logger().Info("Found session for /clear",
+		"session_id", sessionID,
+		"channel_id", cmd.ChannelID,
+		"user_id", cmd.UserID)
+
+	// Get session from engine
+	sess, exists := a.eng.GetSession(sessionID)
+	if !exists {
+		// This shouldn't happen, but handle it gracefully
+		a.Logger().Error("Session disappeared after lookup", "session_id", sessionID)
+		return a.sendEphemeralMessage(cmd.ResponseURL, "ℹ️ Session not found")
+	}
+
+	// Send /clear command to Claude Code via stdin
+	// This clears the conversation context
+	// Use simplified format for slash command
+	clearCmd := map[string]any{
+		"type":    "user",
+		"content": "/clear",
+	}
+
+	if err := sess.WriteInput(clearCmd); err != nil {
+		a.Logger().Error("Failed to send /clear command",
+			"session_id", sessionID, "error", err)
+		return a.sendEphemeralMessage(cmd.ResponseURL,
+			fmt.Sprintf("❌ Failed to clear context: %v", err))
+	}
+
+	a.Logger().Info("Sent /clear command to Claude Code",
+		"session_id", sessionID)
+
+	// Send success response
+	return a.sendEphemeralMessage(cmd.ResponseURL,
+		"✅ Context cleared. Ready for fresh start!")
+}
+
+// handleUnknownCommand handles unrecognized slash commands
+func (a *Adapter) handleUnknownCommand(cmd SlashCommand) {
+	a.Logger().Debug("Unknown slash command", "command", cmd.Command)
+	// Silently ignore unknown commands - Slack may send other commands
+}
+
+// handleDisconnectCommand processes /dc command to disconnect from AI CLI
+// This terminates the CLI process but preserves conversation context
+func (a *Adapter) handleDisconnectCommand(cmd SlashCommand) error {
+	// Check if engine is set
+	if a.eng == nil {
+		a.Logger().Error("Engine is nil")
+		return a.sendEphemeralMessage(cmd.ResponseURL, "❌ Internal error: Engine not initialized")
+	}
+	// Find session by matching user_id and channel_id
+	// New key format is "platform:user_id:bot_user_id:channel_id", so we need to search
+	baseSession := a.FindSessionByUserAndChannel(cmd.UserID, cmd.ChannelID)
+	if baseSession == nil {
+		a.Logger().Error("No active session found for /dc",
+			"channel_id", cmd.ChannelID,
+			"user_id", cmd.UserID)
+		return a.sendEphemeralMessage(cmd.ResponseURL, "ℹ️ No active session found")
+	}
+
+	sessionID := baseSession.SessionID
+	a.Logger().Info("Found session for /dc",
+		"session_id", sessionID,
+		"channel_id", cmd.ChannelID,
+		"user_id", cmd.UserID)
+
+	// Get session from engine
+	sess, exists := a.eng.GetSession(sessionID)
+	if !exists {
+		a.Logger().Error("Session disappeared after lookup", "session_id", sessionID)
+		return a.sendEphemeralMessage(cmd.ResponseURL, "ℹ️ Session not found")
+	}
+
+	// Terminate the CLI process (but context is preserved in marker file)
+	// Next message will resume with same context
+	if err := a.eng.StopSession(sessionID, "user_requested_disconnect"); err != nil {
+		a.Logger().Error("Failed to disconnect session", "session_id", sessionID, "error", err)
+		return a.sendEphemeralMessage(cmd.ResponseURL,
+			fmt.Sprintf("❌ Failed to disconnect: %v", err))
+	}
+
+	a.Logger().Info("Disconnected from CLI process",
+		"session_id", sessionID,
+		"provider_session_id", sess.ProviderSessionID)
+
+	// Send success response
+	return a.sendEphemeralMessage(cmd.ResponseURL,
+		"🔌 Disconnected from CLI. Context preserved. Next message will resume.")
 }

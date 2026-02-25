@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hrygo/hotplex/chatapps/base"
+	"github.com/hrygo/hotplex/chatapps/slack"
 	"github.com/hrygo/hotplex/engine"
 	"github.com/hrygo/hotplex/event"
 	"github.com/hrygo/hotplex/provider"
@@ -86,29 +88,49 @@ func (h *EngineHolder) GetAdapterManager() *AdapterManager {
 
 // StreamCallback implements event.Callback to receive Engine events and forward to ChatApp
 type StreamCallback struct {
-	ctx       context.Context
-	sessionID string
-	platform  string
-	adapters  *AdapterManager
-	logger    *slog.Logger
-	mu        sync.Mutex
-	isFirst   bool
-	metadata  map[string]any  // Original message metadata (channel_id, thread_ts, etc.)
-	processor *ProcessorChain // Message processor chain
+	ctx          context.Context
+	sessionID    string
+	platform     string
+	adapters     *AdapterManager
+	logger       *slog.Logger
+	mu           sync.Mutex
+	isFirst      bool
+	metadata     map[string]any  // Original message metadata (channel_id, thread_ts, etc.)
+	processor    *ProcessorChain // Message processor chain
+	blockBuilder *slack.BlockBuilder
 }
 
 // NewStreamCallback creates a new StreamCallback
 func NewStreamCallback(ctx context.Context, sessionID, platform string, adapters *AdapterManager, logger *slog.Logger, metadata map[string]any) *StreamCallback {
-	return &StreamCallback{
-		ctx:       ctx,
-		sessionID: sessionID,
-		platform:  platform,
-		adapters:  adapters,
-		logger:    logger,
-		isFirst:   true,
-		metadata:  metadata,
-		processor: NewDefaultProcessorChain(logger),
+	cb := &StreamCallback{
+		ctx:          ctx,
+		sessionID:    sessionID,
+		platform:     platform,
+		adapters:     adapters,
+		logger:       logger,
+		isFirst:      true,
+		metadata:     metadata,
+		processor:    NewDefaultProcessorChain(logger),
+		blockBuilder: slack.NewBlockBuilder(),
 	}
+
+	// Set callback as the sender for aggregated messages
+	cb.processor.SetAggregatorSender(cb)
+
+	return cb
+}
+
+// SendAggregatedMessage implements AggregatedMessageSender interface
+// This is called by the MessageAggregatorProcessor when timer flushes buffered messages
+func (c *StreamCallback) SendAggregatedMessage(ctx context.Context, msg *ChatMessage) error {
+	c.logger.Info("SendAggregatedMessage called", "session_id", c.sessionID, "content_len", len(msg.Content))
+
+	if c.adapters == nil {
+		c.logger.Warn("No adapters in SendAggregatedMessage", "platform", c.platform)
+		return nil
+	}
+
+	return c.adapters.SendMessage(ctx, c.platform, c.sessionID, msg)
 }
 
 // Handle implements event.Callback
@@ -140,45 +162,56 @@ func (c *StreamCallback) Handle(eventType string, data any) error {
 func (c *StreamCallback) handleThinking(_ any) error {
 	if c.isFirst {
 		c.isFirst = false
-		return c.sendMessage(string(provider.EventTypeThinking), string(provider.EventTypeThinking))
+		// Build thinking block
+		blocks := c.blockBuilder.BuildThinkingBlock()
+		return c.sendBlockMessage(string(provider.EventTypeThinking), blocks, true)
 	}
 	return nil
 }
 
 func (c *StreamCallback) handleToolUse(data any) error {
-	msg := string(provider.EventTypeToolUse)
+	toolName := string(provider.EventTypeToolUse)
+	input := ""
+	truncated := false
+
 	if m, ok := data.(*event.EventWithMeta); ok {
 		if m.Meta != nil && m.Meta.ToolName != "" {
-			msg = m.Meta.ToolName
+			toolName = m.Meta.ToolName
 		}
 		if m.EventData != "" {
-			truncated := m.EventData
-			if len(truncated) > 100 {
-				truncated = truncated[0:100] + "..."
+			input = m.EventData
+			if len(input) > 100 {
+				truncated = true
 			}
-			msg += fmt.Sprintf("\n```\n%s\n```", truncated)
 		}
 	}
-	return c.sendMessage(msg, string(provider.EventTypeToolUse))
+
+	blocks := c.blockBuilder.BuildToolUseBlock(toolName, input, truncated)
+	return c.sendBlockMessage(toolName, blocks, false)
 }
 
 func (c *StreamCallback) handleToolResult(data any) error {
-	msg := string(provider.EventTypeToolResult)
+	success := true
+	var durationMs int64
+	output := ""
+
 	if m, ok := data.(*event.EventWithMeta); ok {
-		if m.Meta != nil && m.Meta.Status == "error" {
-			msg = "error"
+		if m.Meta != nil {
+			if m.Meta.Status == "error" {
+				success = false
+			}
 			if m.Meta.ErrorMsg != "" {
-				msg += ": " + m.Meta.ErrorMsg
+				output = m.Meta.ErrorMsg
 			}
-		} else if m.EventData != "" {
-			truncated := m.EventData
-			if len(truncated) > 200 {
-				truncated = truncated[0:200] + "..."
-			}
-			msg = fmt.Sprintf("```\n%s\n```", truncated)
+			durationMs = m.Meta.DurationMs
+		}
+		if m.EventData != "" {
+			output = m.EventData
 		}
 	}
-	return c.sendMessage(msg, string(provider.EventTypeToolResult))
+
+	blocks := c.blockBuilder.BuildToolResultBlock(success, durationMs, output, false)
+	return c.sendBlockMessage(string(provider.EventTypeToolResult), blocks, false)
 }
 
 func (c *StreamCallback) handleAnswer(data any) error {
@@ -196,7 +229,8 @@ func (c *StreamCallback) handleAnswer(data any) error {
 		return nil
 	}
 
-	return c.sendMessage(content, string(provider.EventTypeAnswer))
+	blocks := c.blockBuilder.BuildAnswerBlock(content)
+	return c.sendBlockMessage(string(provider.EventTypeAnswer), blocks, false)
 }
 
 func (c *StreamCallback) handleError(data any) error {
@@ -215,7 +249,8 @@ func (c *StreamCallback) handleError(data any) error {
 		errMsg = fmt.Sprintf("%v", data)
 	}
 
-	return c.sendMessage(errMsg, string(provider.EventTypeError))
+	blocks := c.blockBuilder.BuildErrorBlock(errMsg, false)
+	return c.sendBlockMessage(string(provider.EventTypeError), blocks, true)
 }
 
 func (c *StreamCallback) handleDangerBlock(data any) error {
@@ -226,22 +261,62 @@ func (c *StreamCallback) handleDangerBlock(data any) error {
 	default:
 		reason = "security_block"
 	}
-	return c.sendMessage(reason, "security_block")
+	blocks := c.blockBuilder.BuildErrorBlock(reason, true)
+	return c.sendBlockMessage("security_block", blocks, true)
 }
 
-func (c *StreamCallback) sendMessage(content string, eventType string) error {
+// sendBlockMessage sends a message with Slack blocks
+func (c *StreamCallback) sendBlockMessage(content string, blocks []map[string]any, isFinal bool) error {
 	if c.adapters == nil {
 		c.logger.Debug("No adapters, skipping message send", "platform", c.platform)
 		return nil
 	}
 
-	// Build metadata with original message's platform-specific data (channel_id, thread_ts, etc.)
-	metadata := map[string]any{
-		"stream":     true,
-		"event_type": eventType,
+	// Build metadata with original message's platform-specific data
+	metadata := c.copyMessageMetadata()
+	metadata["stream"] = true
+	metadata["event_type"] = content
+	metadata["is_final"] = isFinal
+
+	// Convert blocks to []any for RichContent
+	var blocksAny []any
+	for _, b := range blocks {
+		blocksAny = append(blocksAny, b)
 	}
 
-	// Copy important metadata from original message
+	msg := &ChatMessage{
+		Platform:  c.platform,
+		SessionID: c.sessionID,
+		Content:   content,
+		Metadata:  metadata,
+		RichContent: &base.RichContent{
+			Blocks: blocksAny,
+		},
+	}
+
+	// Process message through processor chain
+	processedMsg, err := c.processor.Process(c.ctx, msg)
+	if err != nil {
+		c.logger.Error("Message processing failed",
+			"platform", c.platform,
+			"session_id", c.sessionID,
+			"error", err)
+		processedMsg = msg
+	}
+
+	if processedMsg == nil {
+		c.logger.Debug("Message dropped by processor",
+			"platform", c.platform,
+			"session_id", c.sessionID)
+		return nil
+	}
+
+	return c.adapters.SendMessage(c.ctx, c.platform, c.sessionID, processedMsg)
+}
+
+// copyMessageMetadata copies important metadata from original message
+func (c *StreamCallback) copyMessageMetadata() map[string]any {
+	metadata := make(map[string]any)
 	if c.metadata != nil {
 		if channelID, ok := c.metadata["channel_id"]; ok {
 			metadata["channel_id"] = channelID
@@ -252,35 +327,14 @@ func (c *StreamCallback) sendMessage(content string, eventType string) error {
 		if threadTS, ok := c.metadata["thread_ts"]; ok {
 			metadata["thread_ts"] = threadTS
 		}
+		if userID, ok := c.metadata["user_id"]; ok {
+			metadata["user_id"] = userID
+		}
+		if messageID, ok := c.metadata["message_id"]; ok {
+			metadata["message_id"] = messageID
+		}
 	}
-
-	msg := &ChatMessage{
-		Platform:  c.platform,
-		SessionID: c.sessionID,
-		Content:   content,
-		Metadata:  metadata,
-	}
-
-	// Process message through processor chain
-	processedMsg, err := c.processor.Process(c.ctx, msg)
-	if err != nil {
-		c.logger.Error("Message processing failed",
-			"platform", c.platform,
-			"session_id", c.sessionID,
-			"error", err)
-		// Continue with original message if processing fails
-		processedMsg = msg
-	}
-
-	// Skip sending if processor returned nil (message dropped)
-	if processedMsg == nil {
-		c.logger.Debug("Message dropped by processor",
-			"platform", c.platform,
-			"session_id", c.sessionID)
-		return nil
-	}
-
-	return c.adapters.SendMessage(c.ctx, c.platform, c.sessionID, processedMsg)
+	return metadata
 }
 
 // EngineMessageHandler implements MessageHandler and integrates with Engine

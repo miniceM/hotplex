@@ -57,6 +57,13 @@ type Adapter struct {
 
 	// Server control
 	disableServer bool
+
+	// Session ID generator for deterministic session mapping
+	sessionIDGenerator SessionIDGenerator
+
+	// Secondary index for O(1) session lookup by user+channel
+	sessionsByUserChannel map[string]*Session // key: "userID:channelID"
+	indexMu               sync.RWMutex        // Protects sessionsByUserChannel
 }
 
 // NewAdapter creates a new base adapter
@@ -71,13 +78,15 @@ func NewAdapter(
 	}
 
 	a := &Adapter{
-		config:         config,
-		logger:         logger,
-		sessions:       make(map[string]*Session),
-		sessionTimeout: 30 * time.Minute,
-		cleanupDone:    make(chan struct{}),
-		platformName:   platform,
-		httpHandlers:   make(map[string]http.HandlerFunc),
+		config:                config,
+		logger:                logger,
+		sessions:              make(map[string]*Session),
+		sessionsByUserChannel: make(map[string]*Session),
+		sessionTimeout:        30 * time.Minute,
+		cleanupDone:           make(chan struct{}),
+		platformName:          platform,
+		httpHandlers:          make(map[string]http.HandlerFunc),
+		sessionIDGenerator:    NewUUID5Generator("hotplex"), // Default to UUID5 generator
 	}
 
 	for _, opt := range opts {
@@ -283,26 +292,48 @@ func (a *Adapter) GetSession(key string) (*Session, bool) {
 	return session, ok
 }
 
-// GetOrCreateSession gets or creates a session
-func (a *Adapter) GetOrCreateSession(key, userID string) string {
+// GetOrCreateSession gets or creates a session using deterministic session ID generation
+// Parameters:
+//   - userID: the user's ID on the platform
+//   - botUserID: the bot's user ID (for multi-bot scenarios, empty for single bot)
+//   - channelID: the channel/room ID (empty for DM)
+//
+// Returns the generated session ID (deterministic based on inputs)
+func (a *Adapter) GetOrCreateSession(userID, botUserID, channelID string) string {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+
+	// Generate deterministic key from all components
+	key := fmt.Sprintf("%s:%s:%s:%s", a.platformName, userID, botUserID, channelID)
 
 	if session, ok := a.sessions[key]; ok {
 		session.LastActive = time.Now()
 		return session.SessionID
 	}
 
+	// Generate deterministic session ID using UUID5
+	sessionID := a.sessionIDGenerator.Generate(a.platformName, userID, botUserID, channelID)
+
 	session := &Session{
-		SessionID:  fmt.Sprintf("%s-%d", a.platformName, time.Now().UnixNano()),
+		SessionID:  sessionID,
 		UserID:     userID,
 		Platform:   a.platformName,
 		LastActive: time.Now(),
 	}
 	a.sessions[key] = session
 
-	a.logger.Info("Session created", "session", session.SessionID, "user", userID)
-	return session.SessionID
+	// Update secondary index for O(1) lookup by user+channel
+	userChannelKey := userID + ":" + channelID
+	a.indexMu.Lock()
+	a.sessionsByUserChannel[userChannelKey] = session
+	a.indexMu.Unlock()
+
+	a.logger.Info("Session created",
+		"session", sessionID,
+		"user", userID,
+		"bot", botUserID,
+		"channel", channelID)
+	return sessionID
 }
 
 // cleanupSessions periodically removes expired sessions
@@ -355,4 +386,21 @@ func RespondWithJSON(w http.ResponseWriter, code int, data any) error {
 func RespondWithText(w http.ResponseWriter, code int, text string) {
 	w.WriteHeader(code)
 	_, _ = fmt.Fprint(w, text)
+}
+
+// FindSessionByUserAndChannel finds a session by matching user_id and channel_id
+// This is useful for slash commands where we don't have the exact key
+// Performance: O(1) using secondary index
+func (a *Adapter) FindSessionByUserAndChannel(userID, channelID string) *Session {
+	// Use secondary index for O(1) lookup
+	userChannelKey := userID + ":" + channelID
+
+	a.indexMu.RLock()
+	defer a.indexMu.RUnlock()
+
+	session, exists := a.sessionsByUserChannel[userChannelKey]
+	if exists {
+		return session
+	}
+	return nil
 }

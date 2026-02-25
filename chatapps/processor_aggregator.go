@@ -21,6 +21,14 @@ type MessageAggregatorProcessor struct {
 	// Configuration
 	window     time.Duration // Time window for aggregation
 	minContent int           // Minimum content difference to trigger send
+
+	// Sender for flushing aggregated messages
+	sender AggregatedMessageSender
+}
+
+// AggregatedMessageSender sends aggregated messages
+type AggregatedMessageSender interface {
+	SendAggregatedMessage(ctx context.Context, msg *base.ChatMessage) error
 }
 
 // messageBuffer holds buffered messages for aggregation
@@ -57,6 +65,13 @@ func NewMessageAggregatorProcessor(logger *slog.Logger, opts MessageAggregatorPr
 		window:     opts.Window,
 		minContent: opts.MinContent,
 	}
+}
+
+// SetSender sets the sender for flushing aggregated messages
+func (p *MessageAggregatorProcessor) SetSender(sender AggregatedMessageSender) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.sender = sender
 }
 
 // Name returns the processor name
@@ -134,6 +149,7 @@ func (p *MessageAggregatorProcessor) bufferMessage(ctx context.Context, msg *bas
 func (p *MessageAggregatorProcessor) flushBufferByTimer(sessionKey string) {
 	p.mu.Lock()
 	buf, exists := p.buffers[sessionKey]
+	sender := p.sender
 	if !exists {
 		p.mu.Unlock()
 		return
@@ -143,11 +159,28 @@ func (p *MessageAggregatorProcessor) flushBufferByTimer(sessionKey string) {
 	delete(p.buffers, sessionKey)
 	p.mu.Unlock()
 
-	// Aggregate and send
+	// Aggregate messages
 	aggregated := p.aggregateMessages(buf.messages)
-	if aggregated != nil {
-		buf.done <- aggregated
-		close(buf.done)
+	if aggregated == nil {
+		return
+	}
+
+	// Send via sender if available
+	if sender != nil {
+		p.logger.Info("Flushing aggregated message via sender",
+			"session_key", sessionKey,
+			"messages_count", len(buf.messages),
+			"content_len", len(aggregated.Content))
+
+		if err := sender.SendAggregatedMessage(context.Background(), aggregated); err != nil {
+			p.logger.Error("Failed to send aggregated message",
+				"session_key", sessionKey,
+				"error", err)
+		}
+	} else {
+		p.logger.Warn("No sender configured, aggregated message dropped",
+			"session_key", sessionKey,
+			"messages_count", len(buf.messages))
 	}
 }
 

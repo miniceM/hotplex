@@ -278,8 +278,9 @@ func (a *Adapter) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sessionID := a.GetOrCreateSession(
-		fmt.Sprintf("%d:%d", update.Message.Chat.ID, update.Message.From.ID),
-		fmt.Sprintf("%d", update.Message.From.ID),
+		fmt.Sprintf("%d", update.Message.From.ID), // userID
+		"", // botUserID (empty for telegram)
+		fmt.Sprintf("%d", update.Message.Chat.ID), // channelID
 	)
 
 	msg := &base.ChatMessage{
