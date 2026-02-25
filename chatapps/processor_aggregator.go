@@ -10,6 +10,24 @@ import (
 	"github.com/hrygo/hotplex/chatapps/base"
 )
 
+// EventConfig defines aggregation behavior for specific event types
+type EventConfig struct {
+	Aggregate    bool // Whether to aggregate messages of this type
+	SameTypeOnly bool // Only aggregate with same event type
+	Immediate    bool // Send immediately, skip aggregation
+	UseUpdate    bool // Use chat.update for streaming updates
+}
+
+// defaultEventConfig defines default aggregation behavior for each event type
+var defaultEventConfig = map[string]EventConfig{
+	"thinking":      {Aggregate: true, SameTypeOnly: false, Immediate: false}, // Aggregate, will be replaced by content
+	"tool_use":      {Aggregate: true, SameTypeOnly: true, Immediate: false},  // Aggregate same type only
+	"tool_result":   {Aggregate: true, SameTypeOnly: true, Immediate: false},  // Aggregate same type only
+	"answer":        {Aggregate: true, UseUpdate: true, Immediate: false},     // Stream with chat.update
+	"error":         {Aggregate: false, Immediate: true},                      // Show immediately
+	"session_stats": {Aggregate: false, Immediate: true},                      // Show immediately
+}
+
 // MessageAggregatorProcessor aggregates multiple rapid messages into one
 type MessageAggregatorProcessor struct {
 	logger *slog.Logger
@@ -37,6 +55,8 @@ type messageBuffer struct {
 	createdAt time.Time
 	timer     *time.Timer
 	done      chan *base.ChatMessage
+	eventType string // Event type for same-type aggregation
+	messageTS string // Timestamp for chat.update (first message)
 }
 
 // MessageAggregatorProcessorOptions configures the aggregator
@@ -84,7 +104,16 @@ func (p *MessageAggregatorProcessor) Order() int {
 	return int(OrderAggregation)
 }
 
-// Process aggregates messages
+// getEventConfig returns the EventConfig for a given event type
+func (p *MessageAggregatorProcessor) getEventConfig(eventType string) EventConfig {
+	if config, ok := defaultEventConfig[eventType]; ok {
+		return config
+	}
+	// Default config for unknown event types: aggregate normally
+	return EventConfig{Aggregate: true}
+}
+
+// Process aggregates messages with event-type awareness
 func (p *MessageAggregatorProcessor) Process(ctx context.Context, msg *base.ChatMessage) (*base.ChatMessage, error) {
 	if msg == nil || msg.Metadata == nil {
 		return msg, nil
@@ -93,6 +122,33 @@ func (p *MessageAggregatorProcessor) Process(ctx context.Context, msg *base.Chat
 	// Check if this is a stream message
 	isStream, _ := msg.Metadata["stream"].(bool)
 	if !isStream {
+		return msg, nil
+	}
+
+	// Get event type from metadata
+	eventType, _ := msg.Metadata["event_type"].(string)
+	if eventType == "" {
+		eventType = "unknown"
+	}
+
+	// Get event config
+	eventConfig := p.getEventConfig(eventType)
+
+	// Set use_update flag if UseUpdate is enabled for this event type
+	if eventConfig.UseUpdate {
+		if msg.Metadata == nil {
+			msg.Metadata = make(map[string]any)
+		}
+		msg.Metadata["use_update"] = true
+	}
+
+	// Check if Immediate flag is set - send immediately without aggregation
+	if eventConfig.Immediate {
+		return msg, nil
+	}
+
+	// Check if this event type should not be aggregated
+	if !eventConfig.Aggregate {
 		return msg, nil
 	}
 
@@ -107,16 +163,20 @@ func (p *MessageAggregatorProcessor) Process(ctx context.Context, msg *base.Chat
 		return msg, nil
 	}
 
-	// Buffer the message
-	return p.bufferMessage(ctx, msg)
+	// Buffer the message with event-type awareness
+	return p.bufferMessage(ctx, msg, eventConfig, eventType)
 }
 
 // bufferMessage adds message to buffer and returns nil (will be sent later)
-func (p *MessageAggregatorProcessor) bufferMessage(ctx context.Context, msg *base.ChatMessage) (*base.ChatMessage, error) {
+func (p *MessageAggregatorProcessor) bufferMessage(ctx context.Context, msg *base.ChatMessage, eventConfig EventConfig, eventType string) (*base.ChatMessage, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
+	// Build session key with event type for SameTypeOnly aggregation
 	sessionKey := msg.Platform + ":" + msg.SessionID
+	if eventConfig.SameTypeOnly {
+		sessionKey = sessionKey + ":" + eventType
+	}
 
 	buf, exists := p.buffers[sessionKey]
 	if !exists {
@@ -124,6 +184,8 @@ func (p *MessageAggregatorProcessor) bufferMessage(ctx context.Context, msg *bas
 			messages:  make([]*base.ChatMessage, 0, 10),
 			createdAt: time.Now(),
 			done:      make(chan *base.ChatMessage, 1),
+			eventType: eventType,
+			messageTS: "", // Will be set on first message send
 		}
 
 		// Set timer to flush buffer after window
@@ -155,6 +217,17 @@ func (p *MessageAggregatorProcessor) flushBufferByTimer(sessionKey string) {
 		return
 	}
 
+	// Extract platform and event_type before unlocking
+	var platform, eventType string
+	if len(buf.messages) > 0 && buf.messages[0] != nil {
+		platform = buf.messages[0].Platform
+		if et, ok := buf.messages[0].Metadata["event_type"].(string); ok {
+			eventType = et
+		} else {
+			eventType = "stream"
+		}
+	}
+
 	// Remove buffer
 	delete(p.buffers, sessionKey)
 	p.mu.Unlock()
@@ -164,6 +237,9 @@ func (p *MessageAggregatorProcessor) flushBufferByTimer(sessionKey string) {
 	if aggregated == nil {
 		return
 	}
+
+	// Record metrics
+	MessagesFlushedTotal.WithLabelValues(eventType, platform, "timer").Inc()
 
 	// Send via sender if available
 	if sender != nil {
@@ -200,6 +276,17 @@ func (p *MessageAggregatorProcessor) flushBuffer(finalMsg *base.ChatMessage) (*b
 		buf.timer.Stop()
 	}
 
+	// Extract platform and event_type before unlocking
+	var platform, eventType string
+	if len(buf.messages) > 0 && buf.messages[0] != nil {
+		platform = buf.messages[0].Platform
+		if et, ok := buf.messages[0].Metadata["event_type"].(string); ok {
+			eventType = et
+		} else {
+			eventType = "stream"
+		}
+	}
+
 	// Add final message
 	buf.messages = append(buf.messages, finalMsg)
 
@@ -214,6 +301,9 @@ func (p *MessageAggregatorProcessor) flushBuffer(finalMsg *base.ChatMessage) (*b
 		"session_key", sessionKey,
 		"messages_count", len(buf.messages),
 		"aggregated_len", len(aggregated.Content))
+
+	// Record metrics
+	MessagesFlushedTotal.WithLabelValues(eventType, platform, "final").Inc()
 
 	return aggregated, nil
 }

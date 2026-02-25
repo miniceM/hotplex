@@ -95,6 +95,7 @@ type StreamCallback struct {
 	logger       *slog.Logger
 	mu           sync.Mutex
 	isFirst      bool
+	thinkingSent bool            // Tracks if thinking message was sent
 	metadata     map[string]any  // Original message metadata (channel_id, thread_ts, etc.)
 	processor    *ProcessorChain // Message processor chain
 	blockBuilder *slack.BlockBuilder
@@ -165,6 +166,7 @@ func (c *StreamCallback) Handle(eventType string, data any) error {
 func (c *StreamCallback) handleThinking(_ any) error {
 	if c.isFirst {
 		c.isFirst = false
+		c.thinkingSent = true
 		// Build thinking block
 		blocks := c.blockBuilder.BuildThinkingBlock()
 		return c.sendBlockMessage(string(provider.EventTypeThinking), blocks, true)
@@ -218,6 +220,12 @@ func (c *StreamCallback) handleToolResult(data any) error {
 }
 
 func (c *StreamCallback) handleAnswer(data any) error {
+	// Clear thinking state on first non-thinking event
+	if c.thinkingSent {
+		c.thinkingSent = false
+		c.logger.Debug("Clearing thinking state for answer")
+	}
+
 	var content string
 	switch v := data.(type) {
 	case string:
@@ -237,6 +245,12 @@ func (c *StreamCallback) handleAnswer(data any) error {
 }
 
 func (c *StreamCallback) handleError(data any) error {
+	// Clear thinking state on first non-thinking event
+	if c.thinkingSent {
+		c.thinkingSent = false
+		c.logger.Debug("Clearing thinking state for error")
+	}
+
 	var errMsg string
 	switch v := data.(type) {
 	case string:
@@ -277,7 +291,7 @@ func (c *StreamCallback) handleSessionStats(data any) error {
 	}
 
 	// Build rich session stats UI using card style (recommended default)
-	blocks := c.blockBuilder.BuildSessionStatsBlock(stats, slack.StatsStyleCard)
+	blocks := c.blockBuilder.BuildSessionStatsBlock(stats, slack.StatsStyleCompact)
 	if len(blocks) == 0 {
 		return nil
 	}
