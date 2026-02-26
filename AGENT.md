@@ -13,13 +13,14 @@ Please read and strictly adhere to the following rules when analyzing, modifying
 - **First Principle**: Instead of reinventing the wheel, we leverage existing, powerful AI CLI agents (like Claude Code, OpenCode) and bridge them into production-ready systems by converting them into long-lived, interactive services (**Cli-as-a-Service**).
 - **Core Role**: It provides a production-ready execution environment for AI agents, eliminating the continuous spin-up overhead of headless CLI mode and providing a unified control layer for security, state, and streaming.
 - **Primary Language**: Go (Golang) 1.24
-- **Architecture**: A lightweight Gateway (WebSocket) wrapping a Core Engine (`hotplex.Engine`), a persistence layer (`internal/engine/pool.go`), and a strict Regex WAF (`internal/security/detector.go`).
+- **Architecture**: A lightweight Gateway (WebSocket) wrapping a Core Engine (`hotplex.Engine`), a session persistence layer (`internal/engine/pool.go`), and a strict Regex WAF (`internal/security/detector.go`).
 
 ### Repository
 
 - **GitHub**: https://github.com/hrygo/hotplex
 - **Owner**: `hrygo`
 - **Repo**: `hotplex`
+- **Version**: `0.11.5`
 
 ---
 
@@ -110,10 +111,16 @@ When looking for where to make changes, follow this map:
 - **Internal Core (`internal/engine/`)**:
   - `pool.go`: **State Owner**. Manages process hot-multiplexing, GC, and concurrency safety.
   - `session.go`: OS process piping, PGID management, and low-level I/O state machines.
+- **Internal Persistence (`internal/persistence/`)**:
+  - `marker.go`: Session durability markers to support seamless resumption across restarts.
 - **Internal Security (`internal/security/`)**:
   - `detector.go`: The Regex WAF (System-wide input/output command interception).
+- **Internal Configuration (`internal/config/`)**:
+  - Configuration watchers and hot-reload logic.
 - **Internal Systems (`internal/sys/`)**:
   - `proc_unix.go` / `proc_windows.go`: OS-level Process Group (PGID) isolation and signal routing.
+- **Internal Utilities (`internal/strutil/`)**:
+  - High-performance string manipulation and path cleaning.
 - **Protocol Gateways (`internal/server/`)**:
   - `hotplex_ws.go`: Native JSON-over-WebSocket protocol (Public API gateway).
   - `opencode_http.go`: OpenCode HTTP/SSE compatibility layer (Translation gateway).
@@ -199,12 +206,12 @@ If the USER asks you to `[Implement]`, `[Extend]`, or `[Fix]` something in HotPl
 
 ### 9.2 Common Failure Patterns
 
-| Pattern | Result | Fix |
-|---------|--------|-----|
-| `edit` → `edit` same file | Duplicate content | Read between edits |
-| Using stale LINE#ID | Wrong position | Re-read before edit |
-| Assuming edit succeeded | Silent corruption | Verify after edit |
-| Multiple edits in one response | Race condition | One edit per turn |
+| Pattern                        | Result            | Fix                 |
+| ------------------------------ | ----------------- | ------------------- |
+| `edit` → `edit` same file      | Duplicate content | Read between edits  |
+| Using stale LINE#ID            | Wrong position    | Re-read before edit |
+| Assuming edit succeeded        | Silent corruption | Verify after edit   |
+| Multiple edits in one response | Race condition    | One edit per turn   |
 
 ### 9.3 Batch Editing Strategy
 

@@ -9,10 +9,10 @@ import (
 )
 
 const (
-	Version      = "0.11.2"
+	Version      = "0.11.5"
 	VersionMajor = 0
 	VersionMinor = 11
-	VersionPatch = 2
+	VersionPatch = 5
 )
 
 // Compile-time interface verification

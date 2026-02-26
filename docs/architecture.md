@@ -17,10 +17,12 @@ hotplex follows a layered architecture with strict visibility rules, separating 
 - **`types/`**: Fundamental data structures (`Config`, `StreamMessage`, `UsageStats`).
 - **`event/`**: Unified event protocol and callback definitions (`Callback`, `EventWithMeta`).
 - **`internal/engine/`**: The core execution engine. Manages the `SessionPool` (process multiplexing) and `Session` (I/O piping and state management).
+- **`internal/persistence/`**: Session durability markers and pool recovery logic.
 - **`internal/security/`**: The Regex-based WAF (`Detector`) for command auditing.
+- **`internal/config/`**: Hot-reloadable configuration watchers.
 - **`internal/sys/`**: Low-level OS primitives for cross-platform process group management (PGID) and signal handling.
 - **`internal/server/`**: Protocol adapters. Contains `hotplex_ws.go` (WebSocket) and `opencode_http.go` (REST/SSE).
-- **`internal/strutil/`**: String manipulation utilities.
+- **`internal/strutil/`**: High-performance string manipulation and path cleaning.
 
 ### 1.2 Design Principles
 1.  **Public Thin, Private Thick**: The root package `hotplex` provides a stable, minimal API surface.
