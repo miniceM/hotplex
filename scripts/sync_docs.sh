@@ -173,7 +173,7 @@ find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(CONTRI
 find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.\./(CONTRIBUTING\|LICENSE\|SECURITY\|AGENT\|CLAUDE)(\.md)?\)|](https://github.com/hrygo/hotplex/blob/main/\1\2)|g' {} +
 
 # 4. Specific known links
-find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)?(archive/)?roadmap-2026(\.md)?\)|](https://github.com/hrygo/hotplex/blob/main/docs/archive/roadmap-2026.md)|g' {} +
+
 
 # Clean up sed backups immediately after each find command
 find "$TARGET_ROOT" -name "*.bak" -type f -delete
