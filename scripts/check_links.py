@@ -51,10 +51,18 @@ def check_link(search_root, file_path, link_path):
 def main():
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     broken_found = False
-    
+
+    # Directories to skip (not part of documentation site)
+    skip_dirs = ['.git', 'node_modules', '.gemini', 'dist', 'vendor', 'tmp', '.claude']
+
     for root, dirs, files in os.walk(root_dir):
         # Skip directories
-        if any(skip in root for skip in ['.git', 'node_modules', '.gemini', 'dist', 'vendor']):
+        if any(skip in root for skip in skip_dirs):
+            continue
+
+        # Only check markdown files in docs-site or scripts directory
+        rel_path = os.path.relpath(root, root_dir)
+        if not rel_path.startswith('docs-site') and not rel_path.startswith('scripts'):
             continue
             
         for file in files:
