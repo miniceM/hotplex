@@ -200,6 +200,28 @@ func (p *ClaudeCodeProvider) ParseEvent(line string) (*ProviderEvent, error) {
 		event.Content = msg.Error
 
 	case "thinking", "status":
+		// Check for Plan Mode subtype first
+		if msg.Subtype == "plan_generation" {
+			event.Type = EventTypePlanMode
+			p.logger.Info("[PROVIDER] Received plan_mode event from CLI",
+				"has_content", len(msg.Content) > 0,
+				"status", msg.Status,
+				"subtype", msg.Subtype)
+			// Extract plan content from blocks
+			allBlocks := msg.GetContentBlocks()
+			for _, block := range allBlocks {
+				if block.Text != "" {
+					event.Content = block.Text
+					break
+				}
+			}
+			// Fallback to status field
+			if event.Content == "" && msg.Status != "" {
+				event.Content = msg.Status
+			}
+			return event, nil
+		}
+
 		event.Type = EventTypeThinking
 		p.logger.Info("[PROVIDER] Received thinking event from CLI",
 			"has_content", len(msg.Content) > 0,
@@ -243,6 +265,47 @@ func (p *ClaudeCodeProvider) ParseEvent(line string) (*ProviderEvent, error) {
 		}
 
 	case "tool_use":
+		// Check for special tool types first
+		switch msg.Name {
+		case "ExitPlanMode":
+			event.Type = EventTypeExitPlanMode
+			event.ToolName = msg.Name
+			p.logger.Info("[PROVIDER] Received exit_plan_mode event from CLI",
+				"has_input", msg.Input != nil)
+			// Extract plan content from input.plan field
+			if msg.Input != nil {
+				if plan, ok := msg.Input["plan"].(string); ok {
+					event.Content = plan
+				}
+			}
+			// Also check content blocks
+			if event.Content == "" {
+				for _, block := range msg.GetContentBlocks() {
+					if block.Text != "" {
+						event.Content = block.Text
+						break
+					}
+				}
+			}
+			return event, nil
+
+		case "AskUserQuestion":
+			event.Type = EventTypeAskUserQuestion
+			event.ToolName = msg.Name
+			p.logger.Info("[PROVIDER] Received ask_user_question event from CLI",
+				"has_input", msg.Input != nil)
+			// Extract question and options
+			if msg.Input != nil {
+				if question, ok := msg.Input["question"].(string); ok {
+					event.Content = question
+				}
+				// Store options in ToolInput for downstream processing
+				event.ToolInput = msg.Input
+			}
+			return event, nil
+		}
+
+		// Default tool_use handling
 		event.Type = EventTypeToolUse
 		event.ToolName = msg.Name
 		event.Status = "running"

@@ -1115,3 +1115,163 @@ func ValidateAndTruncateBlocks(blocks []map[string]any) ([]map[string]any, error
 
 	return blocks, nil
 }
+
+// =============================================================================
+// Plan Mode Blocks
+// =============================================================================
+
+// BuildPlanModeBlock builds blocks for Plan Mode step display
+// Used when Claude is in plan generation mode (thinking with subtype=plan_generation)
+func (b *BlockBuilder) BuildPlanModeBlock(planText string) []map[string]any {
+	if planText == "" {
+		planText = "Analyzing and planning..."
+	}
+
+	// Truncate if too long (use rune-based truncation for UTF-8 safety)
+	displayText := TruncateByRune(planText, 2800)
+
+	return []map[string]any{
+		{
+			"type": "header",
+			"text": plainText("📋 Plan Mode"),
+		},
+		{
+			"type": "section",
+			"text": mrkdwnText(displayText),
+		},
+		{
+			"type": "context",
+			"elements": []map[string]any{
+				mrkdwnText("🔒 _Plan Mode: Claude is analyzing and planning. No changes will be made until you approve._"),
+			},
+		},
+	}
+}
+
+// BuildExitPlanModeBlock builds blocks for Plan Mode exit confirmation
+// Used when Claude requests to exit plan mode and execute the plan
+func (b *BlockBuilder) BuildExitPlanModeBlock(sessionID, planSummary string) []map[string]any {
+	// Truncate plan if too long (use rune-based truncation for UTF-8 safety)
+	displayPlan := TruncateByRune(planSummary, 2500)
+
+	return []map[string]any{
+		{
+			"type": "header",
+			"text": plainText("⚠️ Ready to Execute Plan"),
+		},
+		{
+			"type": "section",
+			"text": mrkdwnText("*Plan Summary:*\n" + displayPlan),
+		},
+		{
+			"type": "section",
+			"text": mrkdwnText("Claude is ready to execute this plan. The following operations may be performed:\n• File edits and creations\n• Command executions\n• Other tool invocations"),
+		},
+		{
+			"type":     "actions",
+			"block_id": "plan_exit_" + sessionID,
+			"elements": []map[string]any{
+				{
+					"type":      "button",
+					"text":      plainText("✅ Approve & Execute"),
+					"action_id": "plan_approve",
+					"style":     "primary",
+					"value":     "approve:" + sessionID,
+				},
+				{
+					"type":      "button",
+					"text":      plainText("📝 Request Changes"),
+					"action_id": "plan_modify",
+					"value":     "modify:" + sessionID,
+				},
+				{
+					"type":      "button",
+					"text":      plainText("❌ Cancel"),
+					"action_id": "plan_cancel",
+					"style":     "danger",
+					"value":     "cancel:" + sessionID,
+				},
+			},
+		},
+	}
+}
+
+// BuildPlanApprovedBlock builds blocks to show after plan is approved
+func (b *BlockBuilder) BuildPlanApprovedBlock() []map[string]any {
+	return []map[string]any{
+		{
+			"type": "section",
+			"text": mrkdwnText("✅ *Plan Approved*\n\nClaude is now executing the plan..."),
+		},
+	}
+}
+
+// BuildPlanCancelledBlock builds blocks to show after plan is cancelled
+func (b *BlockBuilder) BuildPlanCancelledBlock(reason string) []map[string]any {
+	blocks := []map[string]any{
+		{
+			"type": "section",
+			"text": mrkdwnText("❌ *Plan Cancelled*"),
+		},
+	}
+
+	if reason != "" {
+		blocks = append(blocks, map[string]any{
+			"type": "context",
+			"elements": []map[string]any{
+				mrkdwnText("Reason: " + reason),
+			},
+		})
+	}
+
+	return blocks
+}
+
+// =============================================================================
+// AskUserQuestion Blocks (Degraded Mode)
+// =============================================================================
+
+// BuildAskUserQuestionBlock builds blocks for AskUserQuestion tool (degraded mode)
+// Note: AskUserQuestion is not fully supported in headless mode, so we display
+// the question as a text prompt and user replies via message.
+func (b *BlockBuilder) BuildAskUserQuestionBlock(question string, options []map[string]any) []map[string]any {
+	// Truncate question if too long (use rune-based truncation for UTF-8 safety)
+	safeQuestion := TruncateByRune(question, 2000)
+
+	blocks := []map[string]any{
+		{
+			"type": "header",
+			"text": plainText("❓ Claude Needs Your Input"),
+		},
+		{
+			"type": "section",
+			"text": mrkdwnText("*Question:*\n" + safeQuestion),
+		},
+	}
+
+	// Display options if available
+	if len(options) > 0 {
+		var optionTexts []string
+		for i, opt := range options {
+			if label, ok := opt["label"].(string); ok {
+				optionTexts = append(optionTexts, fmt.Sprintf("%d. %s", i+1, label))
+			}
+		}
+		if len(optionTexts) > 0 {
+			blocks = append(blocks, map[string]any{
+				"type": "section",
+				"text": mrkdwnText("*Options:*\n" + strings.Join(optionTexts, "\n")),
+			})
+		}
+	}
+
+	// Add instruction for user
+	blocks = append(blocks, map[string]any{
+		"type": "context",
+		"elements": []map[string]any{
+			mrkdwnText("💡 _Reply to this message with your answer. Claude will continue based on your response._"),
+		},
+	})
+
+	return blocks
+}

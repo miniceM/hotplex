@@ -754,6 +754,12 @@ func (a *Adapter) handleBlockActions(callback *SlackInteractionCallback, w http.
 		return
 	}
 
+	// Check if this is a plan mode callback
+	if action.ActionID == "plan_approve" || action.ActionID == "plan_modify" || action.ActionID == "plan_cancel" {
+		a.handlePlanModeCallback(callback, action, w)
+		return
+	}
+
 	// Handle other block actions here
 	a.Logger().Info("Unhandled block action",
 		"action_id", action.ActionID,
@@ -805,6 +811,81 @@ func (a *Adapter) handlePermissionCallback(callback *SlackInteractionCallback, a
 		"behavior", behavior,
 		"session_id", sessionID,
 		"message_id", messageID,
+	)
+
+	w.WriteHeader(http.StatusOK)
+}
+
+// handlePlanModeCallback handles plan mode approval/denial button clicks
+// TODO: Implement stdin response after confirming the response format via experiment
+func (a *Adapter) handlePlanModeCallback(callback *SlackInteractionCallback, action SlackAction, w http.ResponseWriter) {
+	userID := callback.User.ID
+	channelID := callback.Channel.ID
+	messageTS := callback.Message.Ts
+	_ = messageTS
+	value := action.Value
+
+	a.Logger().Info("Plan mode callback received",
+		"user_id", userID,
+		"channel_id", channelID,
+		"message_ts", messageTS,
+		"value", value,
+		"action_id", action.ActionID,
+	)
+
+	// Parse value: "approve:sessionID" or "modify:sessionID" or "cancel:sessionID"
+	parts := strings.Split(value, ":")
+	if len(parts) < 2 {
+		a.Logger().Error("Invalid plan mode button value", "value", value)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	actionType := parts[0]
+	sessionID := parts[1]
+
+	// Get block builder for creating response blocks
+	blockBuilder := NewBlockBuilder()
+
+	// Update the message to show result and send stdin response
+	var blocks []map[string]any
+
+	switch actionType {
+	case "approve":
+		blocks = blockBuilder.BuildPlanApprovedBlock()
+		// TODO: Send stdin response to approve plan
+		// Based on research, the format is likely similar to permission:
+		// {"behavior": "allow"} - but needs experimental verification
+		a.Logger().Info("Plan approved - stdin response format needs verification",
+			"session_id", sessionID)
+
+	case "modify":
+		blocks = blockBuilder.BuildPlanCancelledBlock("User requested changes")
+		// TODO: Open modal for user to specify changes
+		a.Logger().Info("Plan modification requested - modal not implemented yet",
+			"session_id", sessionID)
+
+	case "cancel":
+		blocks = blockBuilder.BuildPlanCancelledBlock("User cancelled")
+		// TODO: Send stdin response to deny/cancel plan
+		// {"behavior": "deny"} - but needs experimental verification
+		a.Logger().Info("Plan cancelled - stdin response format needs verification",
+			"session_id", sessionID)
+
+	default:
+		a.Logger().Error("Unknown plan mode action", "action", actionType)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	// Update the Slack message
+	if err := a.UpdateMessage(context.Background(), channelID, messageTS, interfaceSlice(blocks), ""); err != nil {
+		a.Logger().Error("Update message failed", "error", err)
+	}
+
+	a.Logger().Info("Plan mode request processed",
+		"action", actionType,
+		"session_id", sessionID,
 	)
 
 	w.WriteHeader(http.StatusOK)

@@ -542,6 +542,38 @@ func (r *Engine) dispatchNormalizedCallback(pevt *provider.ProviderEvent, callba
 		// Pass the raw JSON for full permission data access
 		return callback("permission_request", event.NewEventWithMeta("permission_request", pevt.RawLine, meta))
 
+	case provider.EventTypePlanMode:
+		// Plan Mode event - Claude is generating a plan
+		r.logger.Info("[RUNNER] Plan mode event received",
+			"session_id", pevt.SessionID,
+			"content_len", len(pevt.Content))
+		meta := &event.EventMeta{TotalDurationMs: totalDur}
+		return callback("plan_mode", event.NewEventWithMeta("plan_mode", pevt.Content, meta))
+
+	case provider.EventTypeExitPlanMode:
+		// Exit Plan Mode - Claude requests approval to execute plan
+		r.logger.Info("[RUNNER] Exit plan mode event received",
+			"session_id", pevt.SessionID,
+			"tool_name", pevt.ToolName)
+		meta := &event.EventMeta{
+			ToolName:        pevt.ToolName,
+			ToolID:          pevt.ToolID,
+			TotalDurationMs: totalDur,
+		}
+		return callback("exit_plan_mode", event.NewEventWithMeta("exit_plan_mode", pevt.Content, meta))
+
+	case provider.EventTypeAskUserQuestion:
+		// AskUserQuestion - Claude requests clarification (degraded to text prompt)
+		r.logger.Info("[RUNNER] Ask user question event received",
+			"session_id", pevt.SessionID,
+			"tool_name", pevt.ToolName)
+		meta := &event.EventMeta{
+			ToolName:        pevt.ToolName,
+			ToolID:          pevt.ToolID,
+			TotalDurationMs: totalDur,
+		}
+		return callback("ask_user_question", event.NewEventWithMeta("ask_user_question", pevt.Content, meta))
+
 	default:
 		// Fallback for other event types
 		if pevt.Content != "" {

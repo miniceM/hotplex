@@ -59,6 +59,22 @@ const (
 	// This event type is used when Claude Code requests user approval for tool execution.
 	// Format: {"type":"permission_request","session_id":"...","permission":{"name":"Bash","input":"..."}}
 	EventTypePermissionRequest ProviderEventType = "permission_request"
+
+	// EventTypePlanMode indicates Claude is in Plan Mode and generating a plan.
+	// Claude Code: type="thinking" with subtype="plan_generation"
+	// In this mode, Claude analyzes and plans but does not execute any tools.
+	EventTypePlanMode ProviderEventType = "plan_mode"
+
+	// EventTypeExitPlanMode indicates Claude has completed planning and requests user approval.
+	// Claude Code: type="tool_use" with name="ExitPlanMode"
+	// The plan content is in input.plan field.
+	EventTypeExitPlanMode ProviderEventType = "exit_plan_mode"
+
+	// EventTypeAskUserQuestion indicates Claude is asking a clarifying question.
+	// Claude Code: type="tool_use" with name="AskUserQuestion"
+	// Note: This feature is primarily for interactive mode; headless mode may not support stdin responses.
+	// HotPlex handles this as a degraded text prompt (user replies via message).
+	EventTypeAskUserQuestion ProviderEventType = "ask_user_question"
 )
 
 // ProviderEvent represents a normalized event from any AI CLI provider.

@@ -167,6 +167,12 @@ func (c *StreamCallback) Handle(eventType string, data any) error {
 		return c.handleAnswer(data)
 	case provider.EventTypeError:
 		return c.handleError(data)
+	case provider.EventTypePlanMode:
+		return c.handlePlanMode(data)
+	case provider.EventTypeExitPlanMode:
+		return c.handleExitPlanMode(data)
+	case provider.EventTypeAskUserQuestion:
+		return c.handleAskUserQuestion(data)
 	default:
 		// Check for specific engine/extended events
 		if eventType == "danger_block" {
@@ -811,4 +817,75 @@ func (s *StreamState) updateThrottled(ctx context.Context, adapters *AdapterMana
 	s.mu.Unlock()
 
 	return err
+}
+
+// =============================================================================
+// Plan Mode Event Handlers
+// =============================================================================
+
+// handlePlanMode handles plan generation events (thinking with subtype=plan_generation)
+func (c *StreamCallback) handlePlanMode(data any) error {
+	var planContent string
+
+	if m, ok := data.(*event.EventWithMeta); ok {
+		planContent = m.EventData
+		c.logger.Debug("handlePlanMode received",
+			"data_type", fmt.Sprintf("%T", data),
+			"event_data_len", len(planContent))
+	}
+
+	// Skip empty content
+	if planContent == "" {
+		return nil
+	}
+
+	blocks := c.blockBuilder.BuildPlanModeBlock(planContent)
+	return c.sendBlockMessage(string(provider.EventTypePlanMode), blocks, false)
+}
+
+// handleExitPlanMode handles exit plan mode requests (tool_use with name=ExitPlanMode)
+func (c *StreamCallback) handleExitPlanMode(data any) error {
+	var planSummary string
+
+	if m, ok := data.(*event.EventWithMeta); ok {
+		planSummary = m.EventData
+		c.logger.Debug("handleExitPlanMode received",
+			"data_type", fmt.Sprintf("%T", data),
+			"plan_summary_len", len(planSummary))
+	}
+
+	// Use default message if empty
+	if planSummary == "" {
+		planSummary = "Plan content will be executed upon approval."
+	}
+
+	blocks := c.blockBuilder.BuildExitPlanModeBlock(c.sessionID, planSummary)
+	return c.sendBlockMessage(string(provider.EventTypeExitPlanMode), blocks, false)
+}
+
+// =============================================================================
+// AskUserQuestion Event Handler (Degraded Mode)
+// =============================================================================
+
+// handleAskUserQuestion handles AskUserQuestion tool (degraded mode)
+// Note: AskUserQuestion is not fully supported in headless mode,
+// so we display the question as a text prompt
+func (c *StreamCallback) handleAskUserQuestion(data any) error {
+	var question string
+
+	if m, ok := data.(*event.EventWithMeta); ok {
+		question = m.EventData
+		c.logger.Debug("handleAskUserQuestion received",
+			"data_type", fmt.Sprintf("%T", data),
+			"question_len", len(question))
+	}
+
+	// Skip empty question
+	if question == "" {
+		return nil
+	}
+
+	// Options are not available in this context, display question only
+	blocks := c.blockBuilder.BuildAskUserQuestionBlock(question, nil)
+	return c.sendBlockMessage(string(provider.EventTypeAskUserQuestion), blocks, false)
 }
