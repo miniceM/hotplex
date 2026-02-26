@@ -106,4 +106,3 @@ type ChatMessage struct {
 ## 6. 相关文档 (Reference)
 - [Slack 架构深度解析](./chatapps-slack.md)
 - [平台事件映射指南](./engine-events-slack-mapping.md)
-- [ChatApp 运维与部署指南](./chatapps-ops-guide.md)
