@@ -335,6 +335,37 @@ func (b *BlockBuilder) BuildThinkingBlock(content string) []map[string]any {
 	}
 }
 
+// getToolEmoji returns the appropriate emoji for a given tool name
+func getToolEmoji(toolName string) string {
+	mapping := map[string]string{
+		"Bash":       ":computer:",
+		"Edit":        ":pencil:",
+		"MultiEdit":   ":pencil:",
+		"Write":       ":page_facing_up:",
+		"FileWrite":   ":page_facing_up:",
+		"Read":        ":books:",
+		"FileRead":    ":books:",
+		"FileSearch":  ":mag:",
+		"Glob":        ":mag:",
+		"WebFetch":    ":globe_with_meridians:",
+		"WebSearch":   ":globe_with_meridians:",
+		"Grep":        ":magnifying_glass_tilted_left:",
+		"LS":          ":file_folder:",
+		"List":        ":file_folder:",
+		"Mkdir":       ":file_cabinet:",
+		"Rmdir":       ":file_cabinet:",
+		"Remove":      ":wastebasket:",
+		"Delete":      ":wastebasket:",
+		"Move":        ":arrow_right:",
+		"Copy":        ":clipboard:",
+		"Exit":        ":door:",
+	}
+	if emoji, ok := mapping[toolName]; ok {
+		return emoji
+	}
+	return ":hammer_and_wrench:"
+}
+
 // BuildToolUseBlock builds a section block for tool invocation
 // Used for: provider.EventTypeToolUse
 // Strategy: Can be aggregated with similar tool events
@@ -350,7 +381,7 @@ func (b *BlockBuilder) BuildToolUseBlock(toolName, input string, truncated bool)
 	return []map[string]any{
 		{
 			"type": "section",
-			"text": mrkdwnText(fmt.Sprintf(":hammer_and_wrench: *Using tool:* `%s`", toolName)),
+			"text": mrkdwnText(fmt.Sprintf("%s *Using tool:* `%s`", getToolEmoji(toolName), toolName)),
 			"fields": []map[string]any{
 				mrkdwnText("*Input:*\n" + formattedInput),
 			},
@@ -551,7 +582,8 @@ func (b *BlockBuilder) BuildSessionStatsBlock(stats *event.SessionStatsData, sty
 	}
 }
 
-// buildCompactStats creates a minimal single-line summary
+// buildCompactStats creates a minimal single-line summary with Duration + Tokens only
+// Compact style follows the design principle of showing only the most essential metrics
 func (b *BlockBuilder) buildCompactStats(stats *event.SessionStatsData) []map[string]any {
 	if stats.TotalTokens == 0 && stats.TotalDurationMs == 0 {
 		return []map[string]any{}
@@ -559,29 +591,14 @@ func (b *BlockBuilder) buildCompactStats(stats *event.SessionStatsData) []map[st
 
 	var parts []string
 
-	// Duration
+	// Duration ONLY
 	if stats.TotalDurationMs > 0 {
 		parts = append(parts, fmt.Sprintf("⏱️ %s", formatDuration(stats.TotalDurationMs)))
 	}
 
-	// Tokens
+	// Tokens ONLY (In/Out)
 	if stats.TotalTokens > 0 {
-		parts = append(parts, fmt.Sprintf("📊 %d tokens", stats.TotalTokens))
-	}
-
-	// Cost (only if > 0)
-	if stats.TotalCostUSD > 0.0001 {
-		parts = append(parts, fmt.Sprintf("💰 $%.4f", stats.TotalCostUSD))
-	}
-
-	// Tools (only if used)
-	if len(stats.ToolsUsed) > 0 {
-		parts = append(parts, fmt.Sprintf("🔧 %d tools", len(stats.ToolsUsed)))
-	}
-
-	// Files (only if modified)
-	if stats.FilesModified > 0 {
-		parts = append(parts, fmt.Sprintf("📁 %d files", stats.FilesModified))
+		parts = append(parts, fmt.Sprintf("📊 %d in / %d out", stats.InputTokens, stats.OutputTokens))
 	}
 
 	if len(parts) == 0 {
