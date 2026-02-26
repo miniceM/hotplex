@@ -175,6 +175,64 @@ When needing to reference or learn from OpenClaw's implementation, the source co
 
 ---
 
+## 7.1 CRITICAL: Multi-Agent Local Development Safety (HIGHEST PRIORITY)
+
+**⚠️ STRICTLY FORBIDDEN: `git checkout -- .` without explicit user confirmation**
+
+In a multi-agent local development environment (multiple AI agents working in the same directory simultaneously):
+
+### Forbidden Commands (NEVER execute without explicit user confirmation):
+
+| Command | Risk | Safe Alternative |
+|---------|------|------------------|
+| `git checkout -- .` | ❌ **CRITICAL**: Discards ALL uncommitted changes (yours AND other agents') | `git checkout HEAD -- <specific-file>` |
+| `git reset --hard` | ❌ **CRITICAL**: Destroys ALL uncommitted work | `git stash` then `git stash pop` |
+| `git clean -fd` | ❌ **HIGH**: Removes ALL untracked files | Review files individually first |
+| `git restore .` | ❌ **CRITICAL**: Same as `git checkout -- .` | `git restore <specific-file>` |
+
+### Why This Matters:
+
+```
+Agent A modifies: chatapps/processor_aggregator.go ✅ (not committed)
+Agent B modifies: chatapps/processor_chain.go ✅ (not committed)
+Agent A runs: git checkout -- . ❌ (destroys Agent B's work!)
+```
+
+### Mandatory Protocol:
+
+1. **Before ANY destructive git command**:
+   - Run `git status` and **review ALL changed files**
+   - Check if changes belong to you (your session) or other agents
+   - Ask for explicit user confirmation if other agents' work is present
+
+2. **Use targeted commands**:
+   ```bash
+   # ✅ SAFE: Only restore YOUR specific file
+   git checkout HEAD -- chatapps/processor_aggregator.go
+   
+   # ❌ FORBIDDEN: Restore everything (destroys others' work)
+   git checkout -- .
+   ```
+
+3. **Use `git stash` instead**:
+   ```bash
+   # ✅ SAFE: Temporarily save all changes
+   git stash push -m "WIP: agent session backup"
+   
+   # Later, restore everything
+   git stash pop
+   ```
+
+4. **Commit frequently**:
+   - After each logical unit of work, commit your changes
+   - This protects your work and signals to other agents what's "claimed"
+
+### Violation Consequence:
+
+**Running `git checkout -- .` without confirmation in a multi-agent environment is the HIGHEST PRIORITY violation.** It can destroy hours of work from other agents and cannot be easily recovered.
+
+---
+
 ## 8. Action Mode Trigger
 
 If the USER asks you to `[Implement]`, `[Extend]`, or `[Fix]` something in HotPlex:
