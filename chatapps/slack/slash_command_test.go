@@ -8,9 +8,9 @@ import (
 	"github.com/hrygo/hotplex/chatapps/base"
 )
 
-// TestHandleClearCommand_EngineNil tests /clear when engine is nil
+// TestHandleResetCommand_EngineNil tests /reset when engine is nil
 // This is the only testable case without complex mocking
-func TestHandleClearCommand_EngineNil(t *testing.T) {
+func TestHandleResetCommand_EngineNil(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	adapter := NewAdapter(&Config{
 		BotToken: "xoxb-test",
@@ -20,22 +20,22 @@ func TestHandleClearCommand_EngineNil(t *testing.T) {
 	// Don't set engine - it should be nil
 
 	cmd := SlashCommand{
-		Command:     "/clear",
+		Command:     "/reset",
 		UserID:      "U123",
 		ChannelID:   "C123",
 		ResponseURL: "https://hooks.slack.com/test",
 	}
 
-	// Test that handleClearCommand handles nil engine without panicking
+	// Test that handleResetCommand handles nil engine without panicking
 	// The method should return an error and log appropriately
-	err := adapter.handleClearCommand(cmd)
+	err := adapter.handleResetCommand(cmd)
 
 	// We expect an error since engine is nil
 	if err == nil {
-		t.Log("handleClearCommand returned nil error - may have sent ephemeral message")
+		t.Log("handleResetCommand returned nil error - may have sent ephemeral message")
 	}
 
-	t.Logf("handleClearCommand completed with error: %v", err)
+	t.Logf("handleResetCommand completed with error: %v", err)
 }
 
 // TestSlashCommandStruct tests the SlashCommand struct
