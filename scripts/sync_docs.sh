@@ -44,8 +44,8 @@ mkdir -p "$TARGET_ROOT/sdks"
 mkdir -p "$TARGET_ROOT/reference"
 mkdir -p "$TARGET_ROOT/public/images"
 mkdir -p "$TARGET_ROOT/public/assets/"
-mkdir -p "$TARGET_ROOT/migration"
 mkdir -p "$TARGET_ROOT/plan"
+mkdir -p "$TARGET_ROOT/providers"
 
 # --- Guides ---
 log_info "Syncing guide files..."
@@ -57,8 +57,6 @@ safe_cp "$DOCS_DIR/architecture.md" "$TARGET_ROOT/guide/architecture.md"
 safe_cp "$DOCS_DIR/architecture_zh.md" "$TARGET_ROOT/guide/architecture_zh.md"
 safe_cp "SECURITY.md" "$TARGET_ROOT/guide/security.md"
 safe_cp "$DOCS_DIR/server/api.md" "$TARGET_ROOT/guide/websocket.md"
-safe_cp "$DOCS_DIR/providers/opencode.md" "$TARGET_ROOT/guide/opencode-http.md"
-safe_cp "$DOCS_DIR/providers/opencode_zh.md" "$TARGET_ROOT/guide/opencode-http_zh.md"
 safe_cp "$DOCS_DIR/hooks-architecture.md" "$TARGET_ROOT/guide/hooks.md"
 safe_cp "$DOCS_DIR/hooks-architecture_zh.md" "$TARGET_ROOT/guide/hooks_zh.md"
 safe_cp "$DOCS_DIR/observability-guide.md" "$TARGET_ROOT/guide/observability.md"
@@ -74,6 +72,13 @@ safe_cp "$DOCS_DIR/chatapps/chatapps-slack.md" "$TARGET_ROOT/guide/chatapps-slac
 safe_cp "$DOCS_DIR/chatapps/slack-gap-analysis.md" "$TARGET_ROOT/guide/slack-gap-analysis.md"
 safe_cp "$DOCS_DIR/chatapps/chatapps-dingtalk-analysis.md" "$TARGET_ROOT/guide/chatapps-dingtalk.md"
 
+# --- AI Providers ---
+log_info "Syncing AI provider guides..."
+safe_cp "$DOCS_DIR/providers/claudecode.md" "$TARGET_ROOT/providers/claude.md"
+safe_cp "$DOCS_DIR/providers/claudecode_zh.md" "$TARGET_ROOT/providers/claude_zh.md"
+safe_cp "$DOCS_DIR/providers/opencode.md" "$TARGET_ROOT/providers/opencode.md"
+safe_cp "$DOCS_DIR/providers/opencode_zh.md" "$TARGET_ROOT/providers/opencode_zh.md"
+
 # --- SDKs ---
 log_info "Syncing SDK files..."
 safe_cp "$DOCS_DIR/sdk-guide.md" "$TARGET_ROOT/sdks/go-sdk.md"
@@ -87,13 +92,6 @@ safe_cp "$DOCS_DIR/server/api.md" "$TARGET_ROOT/reference/api.md"
 safe_cp "$DOCS_DIR/server/api_zh.md" "$TARGET_ROOT/reference/api_zh.md"
 safe_cp "$DOCS_DIR/README.md" "$TARGET_ROOT/reference/index.md"
 safe_cp "$DOCS_DIR/README_zh.md" "$TARGET_ROOT/reference/index_zh.md"
-
-# --- Migration ---
-log_info "Syncing migration guides..."
-safe_cp "$DOCS_DIR/migration/migration-guide-v0.8.0.md" "$TARGET_ROOT/migration/v0.8.0.md"
-safe_cp "$DOCS_DIR/migration/migration-guide-v0.8.0_zh.md" "$TARGET_ROOT/migration/v0.8.0_zh.md"
-safe_cp "$DOCS_DIR/migration/migration-guide-v0.9.0.md" "$TARGET_ROOT/migration/v0.9.0.md"
-safe_cp "$DOCS_DIR/migration/migration-guide-v0.9.0_zh.md" "$TARGET_ROOT/migration/v0.9.0_zh.md"
 
 # --- Plan ---
 log_info "Syncing plan files..."
@@ -121,14 +119,21 @@ find "$TARGET_ROOT" -name "*.md" -type f -exec sed -i.bak \
     {} +
 
 # Fix Bilingual Cross-links & Internal VitePress Links using regex (sed -E)
-# Architecture Links
-find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)?architecture(_zh)?(\.md)?\)|](/guide/architecture\2.md)|g' {} +
+# AI Provider Guides rewrites
+find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)?(providers/)?claudecode(_zh)?(\.md)?\)|](/providers/claude\3.md)|g' {} +
+find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)?(providers/)?claudecode_(zh)?(\.md)?\)|](/providers/claude_\4.md)|g' {} +
+find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)?(providers/)?opencode(_zh)?(\.md)?\)|](/providers/opencode\3.md)|g' {} +
+
+# Self-references in providers
+find "$TARGET_ROOT/providers" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(claudecode(_zh)?\.md\)|](/providers/claude\1.md)|g' {} +
+find "$TARGET_ROOT/providers" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(opencode(_zh)?\.md\)|](/providers/opencode\1.md)|g' {} +
+
+# Remove legacy migration sections from index files
+find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak '/Developer Migration/d' {} +
+find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak '/migration-guide-v0/d' {} +
 
 # Go SDK Links
 find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)?sdk-guide(_zh)?(\.md)?\)|](/sdks/go-sdk\2.md)|g' {} +
-
-# OpenCode Links
-find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)?(providers/)?opencode(_zh)?(\.md)?\)|](/guide/opencode-http\3.md)|g' {} +
 
 # API Reference Links
 find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)?(server/)?api(_zh)?(\.md)?\)|](/reference/api\3.md)|g' {} +
@@ -136,8 +141,10 @@ find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)
 # Getting Started / README Links
 find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?README(_zh)?\.md\)|](/guide/getting-started\1.md)|g' {} +
 
-# Other Internal Guides rewritten for VitePress
+# Other Internal Guides rewritten for# Architecture Links (Standardized)
 find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)?quick-start(_zh)?(\.md)?\)|](/guide/quick-start\2.md)|g' {} +
+find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)?architecture(_zh)?(\.md)?\)|](/guide/architecture\2.md)|g' {} +
+find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(architecture(_zh)?\.md\)|](/guide/architecture\1.md)|g' {} +
 find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)?observability-guide(_zh)?(\.md)?\)|](/guide/observability\2.md)|g' {} +
 find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)?docker-deployment(_zh)?(\.md)?\)|](/guide/docker\2.md)|g' {} +
 find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)?production-guide(_zh)?(\.md)?\)|](/guide/deployment\2.md)|g' {} +
@@ -150,22 +157,26 @@ find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)
 find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)?chatapps-design(_zh)?(\.md)?\)|](/guide/chatapps.md)|g' {} +
 find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)?hooks-architecture(_zh)?(\.md)?\)|](/guide/hooks\2.md)|g' {} +
 find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's!\]\(\.?/?SECURITY(\.md)?\)!](/guide/security.md)!g' {} +
-find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)?migration/migration-guide-v0\.8\.0(_zh)?(\.md)?\)|](/migration/v0.8.0\2.md)|g' {} +
-find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)?migration/migration-guide-v0\.9\.0(_zh)?(\.md)?\)|](/migration/v0.9.0\2.md)|g' {} +
-
-# Fix self-referencing links in migration files themselves
-find "$TARGET_ROOT/migration" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(migration-guide-v0\.9\.0(_zh)?(\.md)?\)|](/migration/v0.9.0\1.md)|g' {} +
-find "$TARGET_ROOT/migration" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(migration-guide-v0\.8\.0(_zh)?(\.md)?\)|](/migration/v0.8.0\1.md)|g' {} +
 
 # Redirect GitHub-only URLs (Examples, CONTRIBUTING, LICENSE, Roadmap, ClaudeCode)
-find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?\.\./_examples/([^)]*)\)|](https://github.com/hrygo/hotplex/tree/main/_examples/\1)|g' {} +
-find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?_examples/([^)]*)\)|](https://github.com/hrygo/hotplex/tree/main/_examples/\1)|g' {} +
-find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?CONTRIBUTING(\.md)?\)|](https://github.com/hrygo/hotplex/blob/main/CONTRIBUTING.md)|g' {} +
-find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?LICENSE\)|](https://github.com/hrygo/hotplex/blob/main/LICENSE)|g' {} +
+# 1. Transform specific folders to GitHub tree links (only if not already a URL)
+find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.\./(_examples\|cmd\|internal\|pkg\|scripts\|sdks\|chatapps)/([^)]*)\)|](https://github.com/hrygo/hotplex/tree/main/\1/\2)|g' {} +
+find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\((_examples\|cmd\|internal\|pkg\|scripts\|sdks\|chatapps)/([^)]*)\)|](https://github.com/hrygo/hotplex/tree/main/\1/\2)|g' {} +
+
+# 2. Transform specific file types to GitHub blob links (only for relative paths)
+find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(([^)]*\.(go\|sh\|yml\|yaml\|json\|mod\|sum\|proto))\)|](https://github.com/hrygo/hotplex/blob/main/\1)|g' {} +
+# Prevent double wrapping if it happened
+find "$TARGET_ROOT" -name "*.md" -type f -exec sed -i.bak 's|https://github.com/hrygo/hotplex/blob/main/https://github.com/|https://github.com/|g' {} +
+
+# 3. Handle pointers to root files (e.g., CONTRIBUTING.md, LICENSE)
+find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(CONTRIBUTING\|LICENSE\|SECURITY\|AGENT\|CLAUDE)(\.md)?\)|](https://github.com/hrygo/hotplex/blob/main/\1\2)|g' {} +
+find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.\./(CONTRIBUTING\|LICENSE\|SECURITY\|AGENT\|CLAUDE)(\.md)?\)|](https://github.com/hrygo/hotplex/blob/main/\1\2)|g' {} +
+
+# 4. Specific known links
 find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)?(archive/)?roadmap-2026(\.md)?\)|](https://github.com/hrygo/hotplex/blob/main/docs/archive/roadmap-2026.md)|g' {} +
-find "$TARGET_ROOT" -name "*.md" -type f -exec sed -E -i.bak 's|\]\(\.?/?(docs/)?(providers/)?claudecode(_zh)?(\.md)?\)|](https://github.com/hrygo/hotplex/blob/main/docs/providers/claudecode\3.md)|g' {} +
 
 # Clean up sed backups immediately after each find command
 find "$TARGET_ROOT" -name "*.bak" -type f -delete
 
 log_success "Documentation successfully synchronized."
+

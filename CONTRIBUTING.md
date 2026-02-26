@@ -42,4 +42,4 @@ We use a `Makefile` to standardize development workflows:
 We follow a **"Docs-First"** mentality for releases. Any PR modifying public APIs or core behavior *must* update the relevant documentation in `docs/` and the README files.
 
 ## 📜 Code of Conduct
-Please note that this project is released with a [Contributor Code of Conduct](CODE_OF_CONDUCT.md). By participating in this project you agree to abide by its terms.
+Please note that this project is released with a Contributor Code of Conduct. By participating in this project you agree to abide by its terms.

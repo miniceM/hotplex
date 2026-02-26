@@ -41,3 +41,15 @@ release_notes_*.txt
 
 # Generated PNG assets (use svg2png.sh to regenerate)
 docs/images/png/
+
+# Documentation Site (Generated)
+/docs-site/**/*.md
+!/docs-site/index.md
+!/docs-site/README.md
+/docs-site/guide/
+/docs-site/sdks/
+/docs-site/reference/
+/docs-site/plan/
+/docs-site/providers/
+!/docs-site/public/
+!/docs-site/.vitepress/

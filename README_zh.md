@@ -87,7 +87,7 @@ func main() {
     // 1. 初始化引擎单例
     opts := hotplex.EngineOptions{
         Timeout:         5 * time.Minute,
-        PermissionMode:  "bypassPermissions",
+        PermissionMode:  "bypass-permissions",
         AllowedTools:    []string{"Bash", "Edit", "Read", "FileSearch"},
     }
     engine, _ := hotplex.NewEngine(opts)

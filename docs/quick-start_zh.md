@@ -58,7 +58,7 @@ func main() {
     // 初始化引擎
     engine, err := hotplex.NewEngine(hotplex.EngineOptions{
         Timeout:        5 * time.Minute,
-        PermissionMode: "bypassPermissions",
+        PermissionMode: "bypass-permissions",
     })
     if err != nil {
         panic(err)

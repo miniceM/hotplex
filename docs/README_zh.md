@@ -28,8 +28,6 @@ HotPlex 支持的特定 AI CLI 智能体深度指南。
 - **[ChatApps 指南](chatapps/chatapps-guide.md)**: 聊天平台集成的架构设计与用户手册。
 
 ## 🛠️ 开发者迁移
-- **[迁移至 v0.9.0](migration/migration-guide-v0.9.0_zh.md)** (最新)
-- **[迁移至 v0.8.0](migration/migration-guide-v0.8.0_zh.md)**
 
 ---
 

@@ -18,92 +18,88 @@ export default defineConfig({
 
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'Guide', link: '/guide/getting-started' },
+      {
+        text: 'Guide',
+        items: [
+          { text: 'Essentials', link: '/guide/getting-started' },
+          { text: 'ChatApps', link: '/guide/chatapps' },
+          { text: 'Providers', link: '/providers/claude' },
+        ]
+      },
       { text: 'SDKs', link: '/sdks/go-sdk' },
-      { text: 'Reference', link: '/reference/api' },
-      { text: 'Plan', link: '/plan/technical-plan' },
-      { text: 'Migration', link: '/migration/v0.9.0' },
       { text: 'GitHub', link: 'https://github.com/hrygo/hotplex' }
     ],
 
     sidebar: {
-      '/migration/': [
+      '/': [
         {
-          text: 'Migration Guides',
-          items: [
-            { text: 'v0.9.0 (Current)', link: '/migration/v0.9.0' },
-            { text: 'v0.8.0', link: '/migration/v0.8.0' }
-          ]
-        }
-      ],
-      '/guide/': [
-        {
-          text: 'Introduction',
+          text: 'Essentials',
+          collapsed: false,
           items: [
             { text: 'Getting Started', link: '/guide/getting-started' },
             { text: 'Quick Start', link: '/guide/quick-start' },
+            { text: 'Architecture', link: '/guide/architecture' },
+            { text: 'Security', link: '/guide/security' },
+            { text: 'Hooks System', link: '/guide/hooks' },
           ]
         },
         {
-          text: 'Core Concepts',
+          text: 'AI Providers',
+          collapsed: false,
           items: [
-            { text: 'Architecture', link: '/guide/architecture' },
-            { text: 'Security & Isolation', link: '/guide/security' },
-            { text: 'Event Hooks System', link: '/guide/hooks' }
+            { text: 'Claude Code', link: '/providers/claude' },
+            { text: 'OpenCode', link: '/providers/opencode' },
           ]
         },
         {
           text: 'Connectivity',
+          collapsed: false,
           items: [
-            { text: 'WebSocket Protocol', link: '/guide/websocket' },
+            { text: 'WebSocket', link: '/guide/websocket' },
             { text: 'OpenCode HTTP/SSE', link: '/guide/opencode-http' },
-            { text: 'ChatApps Overview', link: '/guide/chatapps' },
-            { text: 'Slack Deep Dive', link: '/guide/chatapps-slack' },
-            { text: 'Slack Gap Analysis', link: '/guide/slack-gap-analysis' }
           ]
         },
         {
-          text: 'Advanced',
+          text: 'ChatApps Ecosystem',
+          collapsed: true,
           items: [
-            { text: 'Observability (OTel/Prom)', link: '/guide/observability' },
-            { text: 'Docker Execution', link: '/guide/docker' }
+            { text: 'Overview', link: '/guide/chatapps' },
+            { text: 'Slack Integration', link: '/guide/chatapps-slack' },
+            { text: 'Feishu / Lark', link: '/guide/chatapps-feishu' },
+            { text: 'DingTalk', link: '/guide/chatapps-dingtalk' },
+            { text: 'Gap Analysis', link: '/guide/slack-gap-analysis' },
           ]
         },
         {
-          text: 'Operations',
-          items: [
-            { text: 'Production Deployment', link: '/guide/deployment' },
-            { text: 'Benchmark & Performance', link: '/guide/performance' }
-          ]
-        }
-      ],
-      '/sdks/': [
-        {
-          text: 'SDKs',
+          text: 'SDK Reference',
+          collapsed: true,
           items: [
             { text: 'Go SDK', link: '/sdks/go-sdk' },
             { text: 'Python SDK', link: '/sdks/python-sdk' },
-            { text: 'TypeScript SDK', link: '/sdks/typescript-sdk' }
+            { text: 'TypeScript SDK', link: '/sdks/typescript-sdk' },
+            { text: 'API Reference', link: '/reference/api' },
           ]
-        }
-      ],
-      '/reference/': [
+        },
         {
-          text: 'Reference',
+          text: 'Engineering & Operations',
+          collapsed: true,
           items: [
-            { text: 'API Reference', link: '/reference/api' }
+            { text: 'Observability', link: '/guide/observability' },
+            { text: 'Docker Execution', link: '/guide/docker' },
+            { text: 'Production Guide', link: '/guide/deployment' },
+            { text: 'Performance', link: '/guide/performance' },
           ]
-        }
-      ],
-      '/plan/': [
+        },
         {
-          text: 'Technical Plan',
+          text: 'Meta & Analysis',
+          collapsed: true,
           items: [
-            { text: 'Development Plan', link: '/plan/technical-plan' }
+            { text: 'Technical Plan', link: '/plan/technical-plan' },
           ]
         }
       ]
     },
+
 
     socialLinks: [
       { icon: 'github', link: 'https://github.com/hrygo/hotplex' }

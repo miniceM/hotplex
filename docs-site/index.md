@@ -112,12 +112,12 @@ func main() {
 
 HotPlex is designed to live at the center of your AI infrastructure.
 
-| Access Layer      | Protocol       | Best Use Case                                          |
-| ----------------- | -------------- | ------------------------------------------------------ |
-| **Go SDK**        | Internal Logic | Native integration for high-performance backends.      |
-| **ChatApps**      | Webhook/API    | Direct interaction via Telegram, DingTalk, or Slack.   |
-| **Proxy Mode**    | WebSocket      | Building rich, real-time web UIs for your AI Agents.   |
-| **Compatibility** | HTTP/SSE       | Drop-in replacement for OpenCode or OpenAI-like tools. |
+| Access Layer   | Role          | Target Use Case                               |
+| -------------- | ------------- | --------------------------------------------- |
+| **Go SDK**     | Native Logic  | High-performance backend orchestration.       |
+| **ChatApps**   | UI Gateway    | Integration with Slack, Feishu, and DingTalk. |
+| **Proxy Mode** | Real-time I/O | Full-duplex WebSocket UIs for AI agents.      |
+| **Meta Layer** | Compatibility | OpenCode HTTP/SSE standard integration.       |
 
 ---
 

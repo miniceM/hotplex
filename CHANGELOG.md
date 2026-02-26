@@ -1,5 +1,28 @@
 # CHANGELOG.md
 
+## [v0.11.5] - 2026-02-26
+
+### ♻️ Documentation Restoration & Site Optimization
+
+This release restores lost work on documentation maintenance, site optimization, and nomenclature changes. It introduces advanced link transformation logic and automated auditing tools.
+
+### Changed
+- **Nomenclature Normalization**: Updated all references from `ClaudeCode` to `Claude` across documentation and site configuration
+- **VitePress Site Structure**: Reorganized documentation paths for better maintainability and navigation
+- **Links & Redirects**: Implemented advanced regex-based link transformation in `sync_docs.sh`
+  - Relative links to code files are now automatically converted to GitHub tree/blob URLs
+  - Legacy migration guides have been replaced by a streamlined update process
+- **CI/CD Hardening**: Optimized `deploy-docs.yml` for faster and more reliable documentation deployment
+
+### Added
+- **Link Auditing Utility**: New `scripts/check_links.py` for automated identification and fixing of dead links
+- **ChatApps Audit Plan**: New `docs/chatapps-audit-and-fix-plan.md` documenting the current state and path forward for platform documentation
+
+### Contributors
+- [@hrygo](https://github.com/hrygo)
+
+---
+
 ## [v0.11.3] - 2026-02-25
 
 ### 🐛 Bug Fixes
@@ -230,7 +253,7 @@ This major release marks the transformation of HotPlex into a comprehensive **Ch
 - **Enhanced Robustness**: 
   - Periodic session cleanup and stale session removal for adapter implementations.
   - Improved message queuing and retry logic for high-traffic chat scenarios.
-- **Documentation**: New [ChatApps 接入层指南](docs/chatapps-guide.md) with architecture diagrams and platform comparison.
+- **Documentation**: New [ChatApps 接入层指南](docs/chatapps/chatapps-guide.md) with architecture diagrams and platform comparison.
 
 ### Changed
 - **Architecture**: Decoupled engine execution from platform-specific delivery logic.

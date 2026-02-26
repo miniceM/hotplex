@@ -8,7 +8,14 @@ on:
     paths:
       - 'docs-site/**'
       - 'docs/**'
+      - 'sdks/**/*.md'
+      - 'README.md'
+      - 'README_zh.md'
+      - 'SECURITY.md'
+      - 'CHANGELOG.md'
       - 'scripts/sync_docs.sh'
+      - 'scripts/check_links.py'
+      - '.github/workflows/deploy-docs.yml'
   workflow_dispatch:
 
 permissions:
@@ -42,6 +49,8 @@ jobs:
         run: npm ci
       - name: Sync documentation sources
         run: make docs
+      - name: Verify internal links
+        run: python3 scripts/check_links.py
 
       - name: Build with VitePress
         working-directory: docs-site

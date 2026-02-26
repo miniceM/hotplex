@@ -23,7 +23,7 @@ func main() {
 	// 2. Create a custom Provider (optional - demonstrates Provider abstraction)
 	// If Provider is nil, Engine will use ClaudeCodeProvider by default.
 	provider, err := hotplex.NewClaudeCodeProvider(hotplex.ProviderConfig{
-		DefaultPermissionMode: "bypassPermissions",
+		DefaultPermissionMode: "bypass-permissions",
 		AllowedTools:          []string{"Bash", "Read", "Edit", "Write"},
 	}, logger)
 	if err != nil {

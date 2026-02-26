@@ -43,7 +43,7 @@ func main() {
 		Namespace: "demo_app",      // Custom string namespace for deterministic UUID isolation
 
 		// Security Context at Engine level
-		PermissionMode: "bypassPermissions",      // Set "default" for interactive mode
+		PermissionMode: "bypass-permissions",     // Set "default" for interactive mode
 		AllowedTools:   []string{"Bash", "Edit"}, // Only allow certain native tools
 
 		// Provider: nil, // Optional: nil uses default ClaudeCodeProvider
