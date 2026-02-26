@@ -1267,8 +1267,9 @@ func (a *Adapter) handleResetCommand(cmd SlashCommand) error {
 	a.Logger().Debug("Deleted Claude Code session files",
 		"session_id", sessionID, "provider_session_id", providerSessionID, "count", deletedCount)
 
-	// Step 2: Delete HotPlex session marker
-	markerDeleted := a.deleteHotPlexMarker(sessionID)
+	// Step 2: Delete HotPlex session marker (use providerSessionID, not sessionID)
+	// Marker files are named after providerSessionID
+	markerDeleted := a.deleteHotPlexMarker(providerSessionID)
 
 	// Step 3: Terminate the session process
 	if err := a.eng.StopSession(sessionID, "user_requested_reset"); err != nil {

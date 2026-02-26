@@ -69,7 +69,8 @@ func (p *ClaudeCodeProvider) BuildCLIArgs(providerSessionID string, opts *Provid
 		"--verbose",
 		"--output-format", "stream-json",
 		"--input-format", "stream-json",
-		"--include-partial-messages", // Enable streaming of partial content (thinking, etc.)
+		"--include-partial-messages",       // Enable streaming of partial content (thinking, etc.)
+		"--settings", `{"fastMode":false}`, // Force disable fastMode for Agent SDK compatibility
 	}
 
 	// Session management

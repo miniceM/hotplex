@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -235,6 +238,13 @@ func (sm *SessionPool) startSession(ctx context.Context, sessionID string, cfg S
 
 	args := sm.buildCLIArgs(providerSessionID, sessLog, prompt, cfg.TaskInstructions)
 	cmd := exec.CommandContext(sessCtx, sm.cliPath, args...)
+
+	// Clear CLAUDECODE env var to allow nested CLI sessions
+	// CLI refuses to start if it detects it's running inside another Claude Code session
+	cmd.Env = slices.DeleteFunc(slices.Clone(os.Environ()), func(env string) bool {
+		return strings.HasPrefix(env, "CLAUDECODE=")
+	})
+
 	// Resolve relative paths (like ".") to absolute paths
 	// First clean the path to resolve . and .. elements, then convert to absolute
 	if cfg.WorkDir == "." || !filepath.IsAbs(cfg.WorkDir) {
