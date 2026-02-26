@@ -11,6 +11,8 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -1040,7 +1042,16 @@ func (a *Adapter) processSlashCommand(cmd SlashCommand) {
 	}
 }
 
-// handleClearCommand processes /clear command to reset conversation context
+// handleClearCommand processes /clear command to perform a FORCE RESET.
+// This is more aggressive than /dc which only disconnects but preserves context.
+//
+// /clear performs:
+// 1. Reset ProviderSessionID (generates new random UUID on restart)
+// 2. Delete HotPlex session marker (~/.hotplex/sessions/{sessionID}.lock)
+// 3. Terminate the current session process
+//
+// Next message will cold-start a fresh session with new ProviderSessionID,
+// which means Claude Code will start with a clean context.
 func (a *Adapter) handleClearCommand(cmd SlashCommand) error {
 	// Check if engine is set
 	if a.eng == nil {
@@ -1049,7 +1060,6 @@ func (a *Adapter) handleClearCommand(cmd SlashCommand) error {
 	}
 
 	// Find session by matching user_id and channel_id
-	// New key format is "platform:user_id:bot_user_id:channel_id", so we need to search
 	baseSession := a.FindSessionByUserAndChannel(cmd.UserID, cmd.ChannelID)
 	if baseSession == nil {
 		a.Logger().Error("No active session found for /clear",
@@ -1064,38 +1074,35 @@ func (a *Adapter) handleClearCommand(cmd SlashCommand) error {
 		"channel_id", cmd.ChannelID,
 		"user_id", cmd.UserID)
 
-	// Get session from engine
-	sess, exists := a.eng.GetSession(sessionID)
-	if !exists {
-		// This shouldn't happen, but handle it gracefully
-		a.Logger().Error("Session disappeared after lookup", "session_id", sessionID)
-		return a.sendEphemeralMessage(cmd.ResponseURL, "ℹ️ Session not found")
+	// Step 1: Reset ProviderSessionID - this ensures new session gets fresh context
+	a.eng.ResetSessionProvider(sessionID)
+
+	// Step 2: Delete HotPlex marker file
+	markerDeleted := false
+	homeDir, err := os.UserHomeDir()
+	if err == nil {
+		markerPath := filepath.Join(homeDir, ".hotplex", "sessions", sessionID+".lock")
+		if err := os.Remove(markerPath); err != nil && !os.IsNotExist(err) {
+			a.Logger().Error("Failed to delete HotPlex session marker",
+				"session_id", sessionID, "error", err)
+		} else {
+			markerDeleted = true
+			a.Logger().Debug("Deleted HotPlex session marker",
+				"session_id", sessionID, "path", markerPath)
+		}
 	}
 
-	// Send /clear command to Claude Code via stdin
-	// This clears the conversation context
-	// IMPORTANT: Must use the correct format with nested "message" object
-	// Claude Code CLI expects: {"type":"user","message":{"role":"user","content":[...]}}
-	// The error "R.message.role" indicates the message object is required
-	clearCmd := map[string]any{
-		"type": "user",
-		"message": map[string]any{
-			"role": "user",
-			"content": []map[string]any{
-				{"type": "text", "text": "/clear"},
-			},
-		},
-	}
-
-	if err := sess.WriteInput(clearCmd); err != nil {
-		a.Logger().Error("Failed to send /clear command",
+	// Step 3: Terminate the current session process
+	if err := a.eng.StopSession(sessionID, "user_requested_clear"); err != nil {
+		a.Logger().Error("Failed to terminate session",
 			"session_id", sessionID, "error", err)
 		return a.sendEphemeralMessage(cmd.ResponseURL,
-			fmt.Sprintf("❌ Failed to clear context: %v", err))
+			fmt.Sprintf("⚠️ Session termination failed: %v. Please try /dc.", err))
 	}
 
-	a.Logger().Info("Sent /clear command to Claude Code",
-		"session_id", sessionID)
+	a.Logger().Info("Physical cleanup for /clear completed",
+		"session_id", sessionID,
+		"marker_deleted", markerDeleted)
 
 	// Send success response
 	return a.sendEphemeralMessage(cmd.ResponseURL,

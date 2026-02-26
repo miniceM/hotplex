@@ -58,6 +58,10 @@ def main():
             continue
             
         for file in files:
+            # Skip CHANGELOG.md as we don't tamper with historical links
+            if file == 'CHANGELOG.md':
+                continue
+                
             if file.endswith('.md'):
                 file_path = os.path.join(root, file)
                 try:

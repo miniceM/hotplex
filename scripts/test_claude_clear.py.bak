@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""
+Test Claude Code /clear command behavior in stream-json mode.
+
+FINDINGS:
+- /clear returns "Unknown skill: clear" in stream-json mode
+- Slash commands are NOT recognized as special commands in stream-json mode
+- They are treated as regular text messages and interpreted as skill names
+
+WORKAROUNDS:
+1. Use natural language: "忘记之前的所有指令和上下文，重新开始"
+   - PRO: Works, but LLM just "pretends" to forget
+   - CON: Context window still contains history
+
+2. Restart the session with new session ID
+   - PRO: Actually clears context
+   - CON: Loses session persistence benefits
+
+3. Use /compact instead of /clear (if available)
+   - PRO: Official Anthropic recommendation
+   - CON: May also not work in stream-json mode
+
+4. Delete session marker file and restart
+   - PRO: Forces fresh session
+   - CON: Complex, requires file system access
+
+For HotPlex, we need to determine the best approach based on user requirements.
+"""
+
+import subprocess
+import json
+import time
+import sys
+
+
+def test_clear_behavior():
+    """Test /clear behavior in stream-json mode."""
+    print(__doc__)
+
+    cmd = [
+        "claude",
+        "--print",
+        "--verbose",
+        "--output-format",
+        "stream-json",
+        "--input-format",
+        "stream-json",
+        "--include-partial-messages",
+    ]
+
+    p = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,
+    )
+    time.sleep(2)
+
+    def send(text):
+        msg = {
+            "type": "user",
+            "message": {"role": "user", "content": [{"type": "text", "text": text}]},
+        }
+        p.stdin.write(json.dumps(msg, ensure_ascii=False) + "\n")
+        p.stdin.flush()
+        print(f"➤ Sent: {text}")
+
+    def read(timeout=30):
+        start = time.time()
+        while time.time() - start < timeout:
+            line = p.stdout.readline()
+            if not line:
+                break
+            try:
+                e = json.loads(line.strip())
+                if e.get("type") == "result":
+                    return e.get("result", ""), e.get("is_error", False)
+                elif e.get("type") == "assistant":
+                    for b in e.get("message", {}).get("content", []):
+                        if b.get("type") == "text":
+                            return b.get("text", ""), False
+            except json.JSONDecodeError:
+                pass
+        return "", False
+
+    print("\n" + "=" * 60)
+    print("TEST 1: /clear as slash command")
+    print("=" * 60)
+    send("/clear")
+    resp, is_err = read(30)
+    print(f"⬅ Response: {resp[:200]}")
+    print(f"Is error: {is_err}")
+
+    p.terminate()
+    p.wait(timeout=5)
+
+    print("\n" + "=" * 60)
+    print("CONCLUSION")
+    print("=" * 60)
+    print("""
+The /clear command is NOT recognized in stream-json mode.
+
+Root cause: Slash commands (like /clear, /help, /compact) are designed for 
+interactive terminal mode, not for stream-json stdin mode.
+
+In stream-json mode, messages starting with '/' are treated as skill names,
+not slash commands.
+
+RECOMMENDED FIX FOR HOTPLEX:
+
+Option A: Natural language approach (current workaround)
+  - Send: "忘记之前的所有指令和上下文，重新开始"
+  - Pros: Simple, works in stream-json mode
+  - Cons: LLM "pretends" to forget, context remains in window
+
+Option B: Session restart (true clear)
+  - Delete session marker file
+  - Terminate current session
+  - Create new session with same sessionID but fresh context
+  - Pros: Actually clears context completely
+  - Cons: More complex, requires coordination with engine
+
+Option C: Use SDK's session management
+  - The Claude Agent SDK has proper session management
+  - Consider migrating to SDK instead of raw stream-json
+  - Pros: Official support, proper slash command handling
+  - Cons: Requires significant refactoring
+
+For now, Option A is the pragmatic choice, but we should document
+the limitation and consider Option B or C for future versions.
+""")
+
+
+if __name__ == "__main__":
+    test_clear_behavior()

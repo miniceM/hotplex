@@ -328,7 +328,7 @@ This major release marks the transformation of HotPlex into a comprehensive **Ch
 - **Enhanced Robustness**: 
   - Periodic session cleanup and stale session removal for adapter implementations.
   - Improved message queuing and retry logic for high-traffic chat scenarios.
-- **Documentation**: New [ChatApps 接入层指南](docs/chatapps/chatapps-architecture.md) with architecture diagrams and platform comparison.
+- **Documentation**: New [ChatApps 接入层指南](docs/chatapps/chatapps-guide.md) with architecture diagrams and platform comparison.
 
 ### Changed
 - **Architecture**: Decoupled engine execution from platform-specific delivery logic.

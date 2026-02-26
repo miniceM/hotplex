@@ -574,6 +574,16 @@ func (r *Engine) StopSession(sessionID string, reason string) error {
 	return r.manager.TerminateSession(sessionID)
 }
 
+// ResetSessionProvider marks a session to get a new ProviderSessionID on restart.
+// This is used for /clear command to force a fresh session with new context.
+func (r *Engine) ResetSessionProvider(sessionID string) {
+	if pool, ok := r.manager.(*intengine.SessionPool); ok {
+		pool.ResetProviderSessionID(sessionID)
+		r.logger.Info("Engine: marked session for ProviderSessionID reset",
+			"session_id", sessionID)
+	}
+}
+
 // GetSession retrieves an active session by sessionID.
 // Returns the session and true if found, or nil and false if not found.
 func (r *Engine) GetSession(sessionID string) (*intengine.Session, bool) {

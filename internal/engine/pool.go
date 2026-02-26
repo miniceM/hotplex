@@ -20,17 +20,18 @@ import (
 // It orchestrates the lifecycle of multiple CLI processes, ensuring that
 // idle processes are garbage collected to conserve system memory.
 type SessionPool struct {
-	sessions     map[string]*Session
-	mu           sync.RWMutex
-	logger       *slog.Logger
-	timeout      time.Duration // Time after which an idle session is eligible for termination
-	opts         EngineOptions // Global constraints shared by all sessions in the pool
-	cliPath      string        // Resolved path to the CLI binary
-	provider     provider.Provider
-	done         chan struct{} // Internal signal for shutting down background workers
-	shutdownOnce sync.Once     // Ensures Shutdown is only executed once
-	markerStore  persistence.SessionMarkerStore
-	pending      map[string]chan struct{}
+	sessions      map[string]*Session
+	mu            sync.RWMutex
+	logger        *slog.Logger
+	timeout       time.Duration // Time after which an idle session is eligible for termination
+	opts          EngineOptions // Global constraints shared by all sessions in the pool
+	cliPath       string        // Resolved path to the CLI binary
+	provider      provider.Provider
+	done          chan struct{} // Internal signal for shutting down background workers
+	shutdownOnce  sync.Once     // Ensures Shutdown is only executed once
+	markerStore   persistence.SessionMarkerStore
+	pending       map[string]chan struct{}
+	resetSessions map[string]bool // Sessions that need new ProviderSessionID on restart (for /clear)
 }
 
 // blockedEnvPrefixes contains environment variable prefixes that should be filtered
@@ -138,6 +139,17 @@ func (sm *SessionPool) TerminateSession(sessionID string) error {
 	return sm.cleanupSessionLocked(sessionID)
 }
 
+// ResetProviderSessionID marks a session to get a new ProviderSessionID on restart.
+// This is used for /clear command to force a fresh session with new context.
+// The ProviderSessionID will be regenerated as a random UUID instead of deterministic SHA1.
+func (sm *SessionPool) ResetProviderSessionID(sessionID string) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	sm.resetSessions[sessionID] = true
+	sm.logger.Debug("Marked session for ProviderSessionID reset",
+		"session_id", sessionID)
+}
+
 // ListActiveSessions returns all active sessions.
 func (sm *SessionPool) ListActiveSessions() []*Session {
 	sm.mu.RLock()
@@ -202,7 +214,19 @@ func (sm *SessionPool) startSession(ctx context.Context, sessionID string, cfg S
 	go monitorStartup(startupCtx, startedCh, cancel)
 
 	uniqueStr := fmt.Sprintf("%s:session:%s", sm.opts.Namespace, sessionID)
-	providerSessionID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(uniqueStr)).String()
+	// Check if session needs new ProviderSessionID (for /clear command)
+	var providerSessionID string
+	if sm.resetSessions[sessionID] {
+		// Generate random UUID for fresh session
+		providerSessionID = uuid.New().String()
+		delete(sm.resetSessions, sessionID) // Clear the flag
+		sm.logger.Info("Generated new random ProviderSessionID for cleared session",
+			"session_id", sessionID,
+			"provider_session_id", providerSessionID)
+	} else {
+		// Use deterministic SHA1 for consistent session resumption
+		providerSessionID = uuid.NewSHA1(uuid.NameSpaceURL, []byte(uniqueStr)).String()
+	}
 	sessLog := sm.logger.With(
 		"namespace", sm.opts.Namespace,
 		"session_id", sessionID,
