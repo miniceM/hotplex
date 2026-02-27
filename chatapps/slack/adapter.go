@@ -72,7 +72,8 @@ func NewAdapter(config *Config, logger *slog.Logger, opts ...base.AdapterOption)
 
 	// Initialize Slack SDK client (github.com/slack-go/slack)
 	if config.BotToken != "" {
-		a.client = slack.New(config.BotToken)
+		opts := []slack.Option{slack.OptionAppLevelToken(config.AppToken)}
+		a.client = slack.New(config.BotToken, opts...)
 	}
 
 	// Prepare HTTP handlers for HTTP mode (not needed for Socket Mode)
