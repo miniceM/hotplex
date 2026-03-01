@@ -8,16 +8,119 @@ import (
 	"time"
 
 	"github.com/hrygo/hotplex/chatapps/base"
-	"github.com/hrygo/hotplex/chatapps/slack"
 	"github.com/hrygo/hotplex/engine"
+	intengine "github.com/hrygo/hotplex/internal/engine"
 	"github.com/hrygo/hotplex/event"
 	"github.com/hrygo/hotplex/provider"
 	"github.com/hrygo/hotplex/types"
 )
 
+// sessionWrapper wraps intengine.Session to implement chatapps.Session interface
+type sessionWrapper struct {
+	sess *intengine.Session
+}
+
+func (w *sessionWrapper) ID() string {
+	if w.sess == nil {
+		return ""
+	}
+	return w.sess.ID
+}
+
+func (w *sessionWrapper) Status() string {
+	if w.sess == nil {
+		return ""
+	}
+	return "active"
+}
+
+func (w *sessionWrapper) CreatedAt() time.Time {
+	if w.sess == nil {
+		return time.Time{}
+	}
+	return w.sess.CreatedAt
+}
+
+// engineWrapper wraps engine.Engine to implement chatapps.Engine interface
+type engineWrapper struct {
+	eng *engine.Engine
+}
+
+func (w *engineWrapper) Execute(ctx context.Context, cfg *types.Config, prompt string, callback event.Callback) error {
+	return w.eng.Execute(ctx, cfg, prompt, callback)
+}
+
+func (w *engineWrapper) GetSession(sessionID string) (Session, bool) {
+	sess, ok := w.eng.GetSession(sessionID)
+	if !ok || sess == nil {
+		return nil, false
+	}
+	return &sessionWrapper{sess: sess}, true
+}
+
+func (w *engineWrapper) Close() error {
+	return w.eng.Close()
+}
+
+func (w *engineWrapper) GetSessionStats(sessionID string) *SessionStats {
+	stats := w.eng.GetSessionStats(sessionID)
+	if stats == nil {
+		return nil
+	}
+	return &SessionStats{
+		SessionID:     stats.SessionID,
+		Status:        stats.SessionID,
+		TotalTokens:   int64(stats.InputTokens + stats.OutputTokens + stats.CacheReadTokens + stats.CacheWriteTokens),
+		InputTokens:   int64(stats.InputTokens),
+		OutputTokens:  int64(stats.OutputTokens),
+		CacheRead:     int64(stats.CacheReadTokens),
+		CacheWrite:    int64(stats.CacheWriteTokens),
+		TotalCost:     0,
+		Duration:      time.Duration(stats.TotalDurationMs) * time.Millisecond,
+		ToolCallCount: int(stats.ToolCallCount),
+		ErrorCount:    0,
+	}
+}
+
+func (w *engineWrapper) ValidateConfig(cfg *types.Config) error {
+	return w.eng.ValidateConfig(cfg)
+}
+
+func (w *engineWrapper) StopSession(sessionID string, reason string) error {
+	return w.eng.StopSession(sessionID, reason)
+}
+
+func (w *engineWrapper) ResetSessionProvider(sessionID string) {
+	w.eng.ResetSessionProvider(sessionID)
+}
+
+func (w *engineWrapper) SetDangerAllowPaths(paths []string) {
+	w.eng.SetDangerAllowPaths(paths)
+}
+
+func (w *engineWrapper) SetDangerBypassEnabled(token string, enabled bool) error {
+	return w.eng.SetDangerBypassEnabled(token, enabled)
+}
+
+func (w *engineWrapper) SetAllowedTools(tools []string) {
+	w.eng.SetAllowedTools(tools)
+}
+
+func (w *engineWrapper) SetDisallowedTools(tools []string) {
+	w.eng.SetDisallowedTools(tools)
+}
+
+func (w *engineWrapper) GetAllowedTools() []string {
+	return w.eng.GetAllowedTools()
+}
+
+func (w *engineWrapper) GetDisallowedTools() []string {
+	return w.eng.GetDisallowedTools()
+}
+
 // EngineHolder holds the Engine instance and configuration for ChatApps integration
 type EngineHolder struct {
-	engine           *engine.Engine
+	engine           Engine
 	logger           *slog.Logger
 	adapters         *AdapterManager
 	defaultWorkDir   string
@@ -53,8 +156,11 @@ func NewEngineHolder(opts EngineHolderOptions) (*EngineHolder, error) {
 		return nil, fmt.Errorf("create engine: %w", err)
 	}
 
+	// Wrap engine.Engine to implement chatapps.Engine interface
+	wrappedEngine := &engineWrapper{eng: eng}
+
 	return &EngineHolder{
-		engine:           eng,
+		engine:           wrappedEngine,
 		logger:           logger,
 		adapters:         opts.Adapters,
 		defaultWorkDir:   opts.DefaultWorkDir,
@@ -77,7 +183,7 @@ type EngineHolderOptions struct {
 }
 
 // GetEngine returns the underlying Engine instance
-func (h *EngineHolder) GetEngine() *engine.Engine {
+func (h *EngineHolder) GetEngine() Engine {
 	return h.engine
 }
 
@@ -121,6 +227,10 @@ type StreamCallback struct {
 
 	// Tracking records for 3s delayed deletion on Answer (Zone 0 & 1)
 	cleanupMsgRecords []msgRecord
+
+	// Platform-specific operations (dependency injection for testability and platform agnosticism)
+	messageOps MessageOperations
+	sessionOps SessionOperations
 }
 
 // msgRecord tracks a sent message for later deletion or sliding window management.
@@ -139,17 +249,27 @@ type StreamState struct {
 	mu          sync.Mutex
 }
 
-// NewStreamCallback creates a new StreamCallback
-func NewStreamCallback(ctx context.Context, sessionID, platform string, adapters *AdapterManager, logger *slog.Logger, metadata map[string]any) *StreamCallback {
+// NewStreamCallback creates a new StreamCallback with injected platform-specific operations
+func NewStreamCallback(
+	ctx context.Context,
+	sessionID, platform string,
+	adapters *AdapterManager,
+	logger *slog.Logger,
+	metadata map[string]any,
+	messageOps MessageOperations,
+	sessionOps SessionOperations,
+) *StreamCallback {
 	cb := &StreamCallback{
-		ctx:       ctx,
-		sessionID: sessionID,
-		platform:  platform,
-		adapters:  adapters,
-		logger:    logger,
-		isFirst:   true,
-		metadata:  metadata,
-		processor: NewDefaultProcessorChain(logger),
+		ctx:        ctx,
+		sessionID:  sessionID,
+		platform:   platform,
+		adapters:   adapters,
+		logger:     logger,
+		isFirst:    true,
+		metadata:   metadata,
+		processor:  NewDefaultProcessorChain(logger),
+		messageOps: messageOps,
+		sessionOps: sessionOps,
 	}
 
 	// Extract user message coordinates for reaction lifecycle
@@ -345,12 +465,10 @@ func (c *StreamCallback) setReaction(emoji string) {
 	if c.reactionChannelID == "" || c.reactionMessageTS == "" {
 		return
 	}
-	adapter, ok := c.adapters.GetAdapter(c.platform)
-	if !ok {
-		return
-	}
-	slackAdapter, ok := adapter.(*slack.Adapter)
-	if !ok {
+
+	// Use injected message operations interface (no type assertion needed)
+	if c.messageOps == nil {
+		c.logger.Debug("Message operations not supported on this platform", "platform", c.platform)
 		return
 	}
 
@@ -364,7 +482,7 @@ func (c *StreamCallback) setReaction(emoji string) {
 
 	// Remove previous reaction (ignore errors — may not exist)
 	if prevReaction != "" {
-		_ = slackAdapter.RemoveReactionSDK(c.ctx, base.Reaction{
+		_ = c.messageOps.RemoveReaction(c.ctx, base.Reaction{
 			Name:      prevReaction,
 			Channel:   c.reactionChannelID,
 			Timestamp: c.reactionMessageTS,
@@ -372,7 +490,7 @@ func (c *StreamCallback) setReaction(emoji string) {
 	}
 
 	// Add new reaction
-	if err := slackAdapter.AddReactionSDK(c.ctx, base.Reaction{
+	if err := c.messageOps.AddReaction(c.ctx, base.Reaction{
 		Name:      emoji,
 		Channel:   c.reactionChannelID,
 		Timestamp: c.reactionMessageTS,
@@ -398,19 +516,16 @@ func (c *StreamCallback) scheduleDeleteStartingMessage() {
 	c.mu.Unlock()
 
 	time.AfterFunc(3*time.Second, func() {
-		adapter, ok := c.adapters.GetAdapter(c.platform)
-		if !ok {
-			return
+		// Use injected message operations interface (no type assertion needed)
+	if c.messageOps == nil {
+		c.logger.Debug("Message operations not supported", "platform", c.platform)
+		return
+	}
+	for _, rec := range records {
+		if err := c.messageOps.DeleteMessage(context.Background(), rec.ChannelID, rec.MessageTS); err != nil {
+			c.logger.Debug("Failed to delete starting message", "ts", rec.MessageTS, "error", err)
 		}
-		sa, ok := adapter.(*slack.Adapter)
-		if !ok {
-			return
-		}
-		for _, rec := range records {
-			if err := sa.DeleteMessageSDK(context.Background(), rec.ChannelID, rec.MessageTS); err != nil {
-				c.logger.Debug("Failed to delete starting message", "ts", rec.MessageTS, "error", err)
-			}
-		}
+	}
 	})
 }
 
@@ -507,13 +622,10 @@ func (c *StreamCallback) enforceSlidingWindow(zone int) {
 
 	// Delete evicted message in background
 	go func() {
-		adapter, ok := c.adapters.GetAdapter(c.platform)
-		if !ok {
+		if c.messageOps == nil {
 			return
 		}
-		if sa, ok := adapter.(*slack.Adapter); ok {
-			_ = sa.DeleteMessageSDK(context.Background(), toEvict.ChannelID, toEvict.MessageTS)
-		}
+		_ = c.messageOps.DeleteMessage(context.Background(), toEvict.ChannelID, toEvict.MessageTS)
 	}()
 }
 
@@ -530,16 +642,12 @@ func (c *StreamCallback) scheduleDeleteActionMessages() {
 	c.mu.Unlock()
 
 	time.AfterFunc(3*time.Second, func() {
-		adapter, ok := c.adapters.GetAdapter(c.platform)
-		if !ok {
-			return
-		}
-		sa, ok := adapter.(*slack.Adapter)
-		if !ok {
+		if c.messageOps == nil {
+			c.logger.Debug("Message operations not supported", "platform", c.platform)
 			return
 		}
 		for _, rec := range records {
-			if err := sa.DeleteMessageSDK(context.Background(), rec.ChannelID, rec.MessageTS); err != nil {
+			if err := c.messageOps.DeleteMessage(context.Background(), rec.ChannelID, rec.MessageTS); err != nil {
 				c.logger.Debug("Failed to delete tracked message", "ts", rec.MessageTS, "error", err)
 			}
 		}
@@ -787,15 +895,12 @@ func (c *StreamCallback) handleAnswer(data any) error {
 		c.mu.Unlock()
 
 		time.AfterFunc(3*time.Second, func() {
-			adapter, ok := c.adapters.GetAdapter(c.platform)
-			if !ok {
+			if c.messageOps == nil {
 				return
 			}
-			if sa, ok := adapter.(*slack.Adapter); ok {
-				// Use context.Background() — the original c.ctx is likely cancelled by now
-				if err := sa.DeleteMessageSDK(context.Background(), channelID, msgTS); err != nil {
-					c.logger.Debug("Failed to delete thinking message (delayed)", "error", err)
-				}
+			// Use context.Background() — the original c.ctx is likely cancelled by now
+			if err := c.messageOps.DeleteMessage(context.Background(), channelID, msgTS); err != nil {
+				c.logger.Debug("Failed to delete thinking message (delayed)", "error", err)
 			}
 		})
 	} else if c.thinkingSent {
@@ -1369,8 +1474,12 @@ func (h *EngineMessageHandler) Handle(ctx context.Context, msg *ChatMessage) err
 		TaskInstructions: fullInstructions,
 	}
 
-	// Create stream callback with original message metadata
-	callback := NewStreamCallback(ctx, msg.SessionID, msg.Platform, h.adapters, h.logger, msg.Metadata)
+	// Get platform-specific operations from AdapterManager
+	messageOps := h.adapters.GetMessageOperations(msg.Platform)
+	sessionOps := h.adapters.GetSessionOperations(msg.Platform)
+
+	// Create stream callback with injected dependencies
+	callback := NewStreamCallback(ctx, msg.SessionID, msg.Platform, h.adapters, h.logger, msg.Metadata, messageOps, sessionOps)
 	wrappedCallback := func(eventType string, data any) error {
 		return callback.Handle(eventType, data)
 	}

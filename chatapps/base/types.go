@@ -115,3 +115,18 @@ type WebhookProvider interface {
 	WebhookPath() string
 	WebhookHandler() http.Handler
 }
+
+// MessageOperations defines platform-specific message operations
+type MessageOperations interface {
+	DeleteMessage(ctx context.Context, channelID, messageTS string) error
+	AddReaction(ctx context.Context, reaction Reaction) error
+	RemoveReaction(ctx context.Context, reaction Reaction) error
+	UpdateMessage(ctx context.Context, channelID, messageTS string, msg *ChatMessage) error
+}
+
+// SessionOperations defines platform-specific session operations
+// Note: Session is defined in base/adapter.go to avoid circular dependencies
+type SessionOperations interface {
+	GetSession(key string) (*Session, bool)
+	FindSessionByUserAndChannel(userID, channelID string) *Session
+}
