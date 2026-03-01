@@ -6,16 +6,47 @@ HotPlex is more than a tool; it's the center of a growing ecosystem of ChatApps 
 
 ---
 
-### ChatApps Showcase
+## ⭐ Slack — The Flagship Experience
 
-Explore how our community and enterprise partners are using HotPlex to build better user experiences.
+::: tip RECOMMENDED
+Slack is the premier ChatApp for HotPlex, offering the most refined and feature-rich experience for teams and enterprises.
+:::
 
-| ChatApp             | Platform | Category   | Featured Capabilities                                           |
-| :------------------ | :------- | :--------- | :-------------------------------------------------------------- |
-| **Standard Oracle** | Web      | General    | The default HotPlex experience. Clean, fast, and feature-rich.  |
-| **HotPlex Slack**   | Slack    | Enterprise | Fully interactive "Action Zones" and real-time thought streams. |
-| **DingTalk AI**     | DingTalk | Business   | Integrated with corporate approvals and internal toolsets.      |
-| **Discord Oracle**  | Discord  | Community  | Manage high-volume servers with threaded AI assistance.         |
+<div class="slack-showcase">
+
+### Why Slack Leads the Pack
+
+| Feature | Description |
+| :------ | :---------- |
+| **Action Zones** | Interactive message blocks with buttons, select menus, and real-time feedback — no CLI required. |
+| **Thought Streams** | Watch AI reasoning unfold in threaded messages, perfect for complex problem-solving. |
+| **Thread Intelligence** | Each reply spawns its own isolated session, enabling parallel conversations without context pollution. |
+| **Enterprise Ready** | Built on Slack's Socket Mode with OAuth 2.0, rate limiting, and audit logging. |
+| **Team Collaboration** | Share sessions, invite experts, and build institutional knowledge together. |
+
+**→ [Master Slack Integration](/guide/chatapps-slack)**
+
+</div>
+
+<style>
+.slack-showcase {
+  background: linear-gradient(135deg, rgba(74, 21, 75, 0.05) 0%, rgba(98, 114, 226, 0.08) 100%);
+  border: 1px solid rgba(98, 114, 226, 0.2);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1rem 0 2rem 0;
+}
+</style>
+
+---
+
+### Other ChatApps
+
+| ChatApp             | Platform | Category  | Capabilities                                              |
+| :------------------ | :------- | :-------- | :-------------------------------------------------------- |
+| **Standard Oracle** | Web      | General   | The default HotPlex experience. Clean, fast, and flexible. |
+| **DingTalk AI**     | DingTalk | Business  | Corporate approvals and internal toolsets integration.    |
+| **Discord Oracle**  | Discord  | Community | High-volume server management with threaded AI assistance. |
 
 ---
 
