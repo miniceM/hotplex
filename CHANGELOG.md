@@ -1,5 +1,26 @@
 # CHANGELOG.md
 
+## [v0.15.2] - 2026-03-01
+
+### ✨ Artisanal Docs Portal & Narrative Soul
+
+This release transforms the HotPlex documentation site into a premium, vision-driven portal, blending high-end design with deep technical storytelling.
+
+### Added
+- **Glassmorphism UI System** - Implemented a sophisticated visual layer with backdrop-blur, shimmering gradients, and multi-layered "umbra" shadows for a premium feel.
+- **Micro-Interaction Engine** - Introduced smooth `cubic-bezier` transitions, spring-based hover effects, and rounded, translucent scrollbars.
+
+### Changed
+- **Philosophical Narrative** - Completely re-architected the `Introduction` and `Architecture` guides to emphasize the "Philosophy of the Bridge" and the HotPlex engineering ethos.
+- **Technical Storytelling** - Reframed the `Protocol` and `API` specifications as "The Design of a Conversation," ensuring artisanal quality even in technical references.
+- **Rhythmic Typography** - Optimized vertical rhythm and letter-spacing for balanced, high-performance reading.
+
+### Fixed
+- **Environment-Driven Docs** - Corrected `Getting Started` guides to accurately reflect the real-world environment-variable configuration logic of `hotplexd`.
+- **Build Integrity** - Optimized VitePress build pipeline to ensure zero dead links and 100% documentation accuracy.
+
+---
+
 ## [v0.15.1] - 2026-03-01
 
 ### ✨ Reliability Hardening & UI Polish
