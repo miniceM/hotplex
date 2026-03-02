@@ -85,9 +85,11 @@ func (b *MessageBuilder) BuildThinkingMessage(msg *base.ChatMessage) []slack.Blo
 		content = "Thinking..."
 	}
 
-	// Truncate if too long
-	if len(content) > 300 {
-		content = content[:297] + "..."
+	// Zone 1: 64 character fixed length sliding window
+	// Truncate from the front so we can see the latest thinking progress
+	runes := []rune(content)
+	if len(runes) > 64 {
+		content = "... " + string(runes[len(runes)-60:])
 	}
 
 	// Per spec: context block with :brain: emoji and italic text

@@ -5,9 +5,6 @@ import (
 	"time"
 )
 
-// maxSlidingMessages is the maximum number of messages to keep in the sliding window
-const maxSlidingMessages = 5
-
 // CleanupMsgRecord stores message metadata for cleanup
 type CleanupMsgRecord struct {
 	ChannelID string
@@ -79,7 +76,7 @@ func (t *TurnState) GetAllAndClear() []CleanupMsgRecord {
 }
 
 // EnforceSlidingWindow enforces the sliding window limit for a specific zone
-func (t *TurnState) EnforceSlidingWindow(zone int, deleteFn func(CleanupMsgRecord)) {
+func (t *TurnState) EnforceSlidingWindow(zone int, maxMsgs int, deleteFn func(CleanupMsgRecord)) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -95,7 +92,7 @@ func (t *TurnState) EnforceSlidingWindow(zone int, deleteFn func(CleanupMsgRecor
 		}
 	}
 
-	if len(zoneRecords) <= maxSlidingMessages {
+	if len(zoneRecords) <= maxMsgs {
 		return
 	}
 

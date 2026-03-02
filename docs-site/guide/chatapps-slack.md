@@ -90,11 +90,14 @@ The agent communicates its internal state via a subtle language of emojis:
 - ✅ (`:white_check_mark:`): The interaction loop has reached a successful resolution.
 - ⚠️ (`:warning:`): An unexpected friction was encountered. Check the Error Zone.
 
-#### 2. Structural Interaction (Zones)
-Every agent message is divided into atomic **Zones** to ensure clarity:
-- **Thinking Zone**: A context-rich space showing the agent's reasoning path.
-- **Action Zone**: A high-visibility area for tool usage (e.g., `Bash`, `Edit`).
-- **Answer Zone**: The final intellectual artifact, delivered with fluid streaming.
+#### 2. Structural Interaction (6 Zones Mapping)
+Every agent message sequence is divided into atomic **Zones** to ensure clarity and avoid history bloat:
+- **Zone 0 (Status):** Ephemeral indicator (`Initializing...`) destroyed upon further action.
+- **Zone 1 (Thinking):** Real-time context limited to a scrolling window of the latest 64-characters with a 1-second cadence throttle to maintain UI sanity.
+- **Zone 2 (Action):** High-visibility `tool_use` / `tool_result` cards strictly capped to a sliding window of **2 messages**. Older actions are automatically purged.
+- **Zone 3 (Display):** The final intellectual artifact, auto-paginated using divider blocks every ~3500 bytes for unlimited fluid streaming.
+- **Zone 4 (Interaction):** Blocking wait state containing interactive prompt elements (HITL approvals, questions).
+- **Zone 5 (Summary):** Session-end statistics indicating token and duration metrics.
 
 ---
 

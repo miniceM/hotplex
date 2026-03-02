@@ -215,7 +215,8 @@ type StreamCallback struct {
 	currentStatus     base.MessageType // Current status type (thinking, tool_use, answer)
 
 	// Stream state for throttled updates
-	streamState *StreamState
+	streamState      *StreamState
+	lastStatusUpdate time.Time // Throttle tracker for thinking/status messages
 
 	// Reaction lifecycle state — tracks the user's trigger message for emoji status
 	reactionChannelID string // Channel for reactions (from user msg)
@@ -600,7 +601,15 @@ func (c *StreamCallback) enforceSlidingWindow(zone int) {
 
 // enforceSlidingWindowWithTurnState enforces sliding window using turnState
 func (c *StreamCallback) enforceSlidingWindowWithTurnState(zone int) {
-	c.turnState.EnforceSlidingWindow(zone, func(rec intengine.CleanupMsgRecord) {
+	maxMsgs := 5 // Default for other zones
+	switch zone {
+	case ZoneThinking:
+		maxMsgs = 1 // Only 1 thinking message allowed
+	case ZoneAction:
+		maxMsgs = 2 // Keeping latest 2 Actions
+	}
+
+	c.turnState.EnforceSlidingWindow(zone, maxMsgs, func(rec intengine.CleanupMsgRecord) {
 		if c.messageOps == nil {
 			return
 		}
@@ -647,6 +656,15 @@ func (c *StreamCallback) updateStatusMessage(statusType base.MessageType, displa
 		c.mu.Unlock()
 		return nil
 	}
+
+	// Throttle repetitive thinking streaming updates to ~1 per second
+	if c.currentStatus == statusType && statusType == base.MessageTypeThinking {
+		if time.Since(c.lastStatusUpdate) < time.Second {
+			c.mu.Unlock()
+			return nil
+		}
+	}
+	c.lastStatusUpdate = time.Now()
 
 	c.logger.Debug("Updating status message",
 		"status_type", statusType,
