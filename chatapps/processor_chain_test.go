@@ -86,8 +86,8 @@ func TestDefaultProcessorChain_Creation(t *testing.T) {
 
 	expectedOrders := []ProcessorOrder{
 		OrderFilter,
-		OrderRateLimit,
 		OrderZoneOrder,
+		OrderRateLimit,
 		OrderThread,
 		OrderAggregation,
 		OrderRichContent,

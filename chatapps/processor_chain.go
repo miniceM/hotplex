@@ -130,10 +130,10 @@ type ProcessorOrder int
 const (
 	// OrderFilter drops noise events before anything else
 	OrderFilter ProcessorOrder = 5
+	// OrderZoneOrder ensures messages respect zone ordering (thinking→action→output→summary)
+	OrderZoneOrder ProcessorOrder = 8
 	// OrderRateLimit should run first to prevent abuse
 	OrderRateLimit ProcessorOrder = 10
-	// OrderZoneOrder ensures messages respect zone ordering (thinking→action→output→summary)
-	OrderZoneOrder ProcessorOrder = 12
 	// OrderThread manages thread_ts caching for message chunking
 	OrderThread ProcessorOrder = 15
 	// OrderAggregation groups messages together

@@ -223,9 +223,6 @@ type StreamCallback struct {
 	reactionMessageTS string // User's message TS for reactions
 	currentReaction   string // Currently active reaction emoji name
 
-	// Starting message records for 3s delayed deletion (session_start + engine_starting)
-	startingMsgRecords []msgRecord
-
 	// Cleanup records for sliding window management and final deletion
 	cleanupMsgRecords []msgRecord
 
@@ -518,32 +515,6 @@ func (c *StreamCallback) setReaction(emoji string) {
 	} else {
 		c.logger.Warn("Failed to set reaction", "emoji", emoji, "error", err)
 	}
-}
-
-// scheduleDeleteStartingMessage schedules a 3-second delayed deletion
-// for all startup-phase messages (session_start + engine_starting).
-func (c *StreamCallback) scheduleDeleteStartingMessage() {
-	c.mu.Lock()
-	if len(c.startingMsgRecords) == 0 {
-		c.mu.Unlock()
-		return
-	}
-	records := c.startingMsgRecords
-	c.startingMsgRecords = nil // Clear immediately to prevent double-delete
-	c.mu.Unlock()
-
-	time.AfterFunc(3*time.Second, func() {
-		// Use injected message operations interface (no type assertion needed)
-		if c.messageOps == nil {
-			c.logger.Debug("Message operations not supported", "platform", c.platform)
-			return
-		}
-		for _, rec := range records {
-			if err := c.messageOps.DeleteMessage(context.Background(), rec.ChannelID, rec.MessageTS); err != nil {
-				c.logger.Debug("Failed to delete starting message", "ts", rec.MessageTS, "error", err)
-			}
-		}
-	})
 }
 
 // trackMessage records a message for sliding window management and final cleanup.
@@ -940,9 +911,6 @@ func (c *StreamCallback) handleAnswer(data any) error {
 	// Schedule deletion of all tracked Thinking/Action messages (3s delay)
 	c.scheduleDeleteActionMessages()
 
-	// Clear session start message records (3s delay)
-	c.scheduleDeleteStartingMessage()
-
 	// Capture answer content
 	var content string
 	var metadata map[string]any
@@ -1015,7 +983,6 @@ func (c *StreamCallback) handleError(data any) error {
 
 	// Cleanup any lingering intermediate messages on error
 	c.scheduleDeleteActionMessages()
-	c.scheduleDeleteStartingMessage()
 
 	var errMsg string
 	switch v := data.(type) {
@@ -1105,7 +1072,6 @@ func (c *StreamCallback) handleSessionStats(data any) error {
 	// Final cleanup of transient transition messages (Thinking + Action Zone)
 	// This applies a 3s delayed deletion for a clean end-state UX
 	c.scheduleDeleteActionMessages()
-	c.scheduleDeleteStartingMessage()
 
 	// Send stats message with platform-agnostic MessageType
 	msg := &base.ChatMessage{
@@ -1796,20 +1762,6 @@ func (c *StreamCallback) handleSessionStart(data any) error {
 		return err
 	}
 
-	// Track starting message for 3s delayed deletion
-	if ts, ok := msg.Metadata["message_ts"].(string); ok && ts != "" {
-		if ch, ok := msg.Metadata["channel_id"].(string); ok && ch != "" {
-			c.mu.Lock()
-			c.startingMsgRecords = append(c.startingMsgRecords, msgRecord{
-				ChannelID: ch,
-				MessageTS: ts,
-				ZoneIndex: ZoneInitialization,
-				EventType: string(provider.EventTypeSessionStart),
-			})
-			c.mu.Unlock()
-		}
-	}
-
 	return nil
 }
 
@@ -1837,20 +1789,6 @@ func (c *StreamCallback) handleEngineStarting(data any) error {
 	msg.Metadata = c.mergeMetadata(msg.Metadata)
 	if err := c.sendMessageAndGetTS(c.convertToChatMessage(msg)); err != nil {
 		return err
-	}
-
-	// Track engine_starting message for 3s delayed deletion
-	if ts, ok := msg.Metadata["message_ts"].(string); ok && ts != "" {
-		if ch, ok := msg.Metadata["channel_id"].(string); ok && ch != "" {
-			c.mu.Lock()
-			c.startingMsgRecords = append(c.startingMsgRecords, msgRecord{
-				ChannelID: ch,
-				MessageTS: ts,
-				ZoneIndex: ZoneInitialization,
-				EventType: string(provider.EventTypeEngineStarting),
-			})
-			c.mu.Unlock()
-		}
 	}
 
 	return nil

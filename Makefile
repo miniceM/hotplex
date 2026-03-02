@@ -23,10 +23,13 @@ LDFLAGS       := -X 'main.Version=$(VERSION)' -X 'main.Commit=$(COMMIT)' -X 'mai
 LOG_DIR       := .logs
 LOG_FILE      := $(LOG_DIR)/daemon.log
 
-.PHONY: all help build build-all fmt vet test test-unit test-race test-integration test-all lint tidy clean install-hooks run stop restart docs svg2png
+.PHONY: all help build build-all fmt vet test test-unit test-race test-integration test-all lint tidy clean install-hooks run stop restart docs svg2png service-install service-uninstall service-start service-stop service-restart service-status service-logs service-enable service-disable
 
 # Default target
 all: help
+
+# Service management script
+SERVICE_SCRIPT := ./scripts/service.sh
 
 svg2png: ## Manual utility: Convert all SVG files to 4K PNG (for external use)
 	@printf "${CYAN}🖼️  Converting SVG to PNG...${NC}\n"
@@ -138,3 +141,47 @@ restart: stop build ## Restart the daemon and log to $(LOG_FILE)
 	@printf "${GREEN}✅ Daemon started in background with PID: $$(pgrep -f $(BINARY_NAME))${NC}\n"
 	@printf "${CYAN}📋 Tailing logs (Ctrl+C to stop tailing, daemon will keep running):${NC}\n"
 	@tail -f $(LOG_FILE)
+
+## 🔧 Service Management (System Service)
+service-install: build ## Install hotplexd as a system service (launchd/systemd)
+	@printf "${CYAN}📦 Installing HotPlex as system service...${NC}\n"
+	@chmod +x $(SERVICE_SCRIPT)
+	@$(SERVICE_SCRIPT) install
+
+service-uninstall: ## Remove the system service
+	@printf "${YELLOW}🗑️  Removing HotPlex system service...${NC}\n"
+	@chmod +x $(SERVICE_SCRIPT)
+	@$(SERVICE_SCRIPT) uninstall
+
+service-start: ## Start the system service
+	@printf "${GREEN}▶️  Starting HotPlex service...${NC}\n"
+	@chmod +x $(SERVICE_SCRIPT)
+	@$(SERVICE_SCRIPT) start
+
+service-stop: ## Stop the system service
+	@printf "${YELLOW}⏹️  Stopping HotPlex service...${NC}\n"
+	@chmod +x $(SERVICE_SCRIPT)
+	@$(SERVICE_SCRIPT) stop
+
+service-restart: ## Restart the system service
+	@printf "${PURPLE}🔄 Restarting HotPlex service...${NC}\n"
+	@chmod +x $(SERVICE_SCRIPT)
+	@$(SERVICE_SCRIPT) restart
+
+service-status: ## Check system service status
+	@chmod +x $(SERVICE_SCRIPT)
+	@$(SERVICE_SCRIPT) status
+
+service-logs: ## Tail system service logs (Ctrl+C to stop)
+	@chmod +x $(SERVICE_SCRIPT)
+	@$(SERVICE_SCRIPT) logs
+
+service-enable: ## Enable auto-start on boot/login
+	@printf "${GREEN}🔔 Enabling auto-start...${NC}\n"
+	@chmod +x $(SERVICE_SCRIPT)
+	@$(SERVICE_SCRIPT) enable
+
+service-disable: ## Disable auto-start on boot/login
+	@printf "${YELLOW}🔕 Disabling auto-start...${NC}\n"
+	@chmod +x $(SERVICE_SCRIPT)
+	@$(SERVICE_SCRIPT) disable

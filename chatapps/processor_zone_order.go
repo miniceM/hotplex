@@ -134,6 +134,15 @@ func (p *ZoneOrderProcessor) Process(ctx context.Context, msg *base.ChatMessage)
 	// session_stats marks turn end; initialization state persists until session ends.
 	p.mu.Unlock()
 
+	// If this is the ending summary and init never arrived, skip waiting to avoid dirty logs.
+	if zone == ZoneSummary {
+		select {
+		case <-state.initReceived:
+		default:
+			return msg, nil
+		}
+	}
+
 	// For all other zones, wait briefly for Initialization.
 	// This ensures "Starting session" always appears at the top.
 	select {
