@@ -226,7 +226,7 @@ func (p *ClaudeCodeProvider) ParseEvent(line string) ([]*ProviderEvent, error) {
 			event.Metadata.CacheReadTokens = msg.Usage.CacheReadInputTokens
 		} else {
 			// Debug: log that usage is missing
-			fmt.Printf("[PROVIDER] result event missing usage data: %s\n", line)
+			p.logger.Warn("[PROVIDER] result event missing usage data", "line", line)
 		}
 		events = append(events, event)
 
