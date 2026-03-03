@@ -245,11 +245,11 @@ func (b *CardBuilder) BuildErrorCard(errorMsg string) (string, error) {
 func (b *CardBuilder) BuildSessionStatsCard(duration string, tokenUsage int, otherStats map[string]string) (string, error) {
 	// Build stats text
 	var statsBuilder strings.Builder
-	statsBuilder.WriteString(fmt.Sprintf("⏱️ %s • ⚡ %d tokens", duration, tokenUsage))
-
+	_, _ = fmt.Fprintf(&statsBuilder, "⏱️ %s • ⚡ %d tokens", duration, tokenUsage)
+	
 	// Add additional stats if provided
 	for key, value := range otherStats {
-		statsBuilder.WriteString(fmt.Sprintf(" • %s: %s", key, value))
+		_, _ = fmt.Fprintf(&statsBuilder, " • %s: %s", key, value)
 	}
 
 	card := &CardTemplate{

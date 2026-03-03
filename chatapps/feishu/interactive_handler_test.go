@@ -132,7 +132,7 @@ func TestHandleInteractive_URLVerification(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create adapter: %v", err)
 	}
-	defer adapter.Stop()
+	defer func() { _ = adapter.Stop() }()
 
 	handler := NewInteractiveHandler(adapter)
 
