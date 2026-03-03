@@ -1,0 +1,147 @@
+# =============================================================================
+# HotPlex Feishu (Lark) Adapter Configuration
+# =============================================================================
+# Detailed Setup Guide: docs/chatapps/chatapps-feishu-manual.md
+
+# [Required] Platform identifier
+platform: feishu
+
+# -----------------------------------------------------------------------------
+# AI Provider Settings
+# -----------------------------------------------------------------------------
+provider:
+  type: claude-code                # AI backend: claude-code or opencode
+  default_model: sonnet            # Model: sonnet, haiku, opus
+  default_permission_mode: bypass-permissions # bypass-permissions or ask
+
+# -----------------------------------------------------------------------------
+# Workspace & Engine Settings
+# -----------------------------------------------------------------------------
+engine:
+  work_dir: ~/.feishu/BOT_cli_a1b2c3d4/hotplex  # Agent's working directory
+  # timeout: 30m                                # Max wait for AI response
+  # idle_timeout: 30m                           # Session persistence time
+
+# -----------------------------------------------------------------------------
+# Connection Settings
+# -----------------------------------------------------------------------------
+# Feishu only supports HTTP Webhook mode (no Socket Mode like Slack)
+# For local development, use ngrok/cloudflared to expose local server
+mode: http
+
+# HTTP server address (Webhook events)
+server_addr: ${FEISHU_SERVER_ADDR:-:8082}
+
+# -----------------------------------------------------------------------------
+# Feishu API Credentials (Required)
+# -----------------------------------------------------------------------------
+# Obtain from Feishu Developer Console: https://open.feishu.cn/app
+credentials:
+  app_id: ${FEISHU_APP_ID}                    # App ID (cli_xxxxxxxxxxxxx)
+  app_secret: ${FEISHU_APP_SECRET}            # App Secret
+  verification_token: ${FEISHU_VERIFICATION_TOKEN}  # Event Subscription Token
+  encrypt_key: ${FEISHU_ENCRYPT_KEY}          # Message Encryption Key
+
+# -----------------------------------------------------------------------------
+# AI Identity & Behavior
+# -----------------------------------------------------------------------------
+system_prompt: |
+  You are HotPlex AI, an expert software engineer in a Feishu conversation.
+
+  ## Environment
+  - Running under HotPlex engine (stdin/stdout)
+  - Headless mode - cannot prompt for user input
+
+  ## Feishu Context
+  - Replies go to thread automatically
+  - Keep answers concise - user expects quick responses
+
+  ## Output
+  - Be concise - short messages preferred
+  - Use bullet lists over paragraphs
+  - Use code blocks for code snippets
+  - Avoid tables - use lists instead
+
+task_instructions: |
+  1. Understand before acting
+  2. Avoid operations requiring user input
+  3. Summarize tool output - don't dump raw data
+  4. Write detailed content to docs/ directory
+
+# -----------------------------------------------------------------------------
+# Feature Toggles
+# -----------------------------------------------------------------------------
+features:
+  # Split messages > 4096 chars (Feishu limit)
+  chunking:
+    enabled: true
+    max_chars: 4096
+    
+  # Reply in threads to keep channels clean
+  threading:
+    enabled: true
+
+  # Auto-retry on Feishu API rate limits (HTTP 429)
+  rate_limit:
+    enabled: true
+    max_attempts: 3
+    base_delay_ms: 500
+    max_delay_ms: 5000
+
+  # Convert standard Markdown to Feishu card format
+  markdown:
+    enabled: true
+
+  # Interactive card features
+  cards:
+    enabled: true
+    # Card types: thinking, tool_use, answer, error, session_stats
+    templates:
+      - thinking
+      - tool_use
+      - answer
+      - error
+      - session_stats
+
+# -----------------------------------------------------------------------------
+# Security & Access Control
+# -----------------------------------------------------------------------------
+security:
+  # Verify Feishu request signatures (mandatory)
+  verify_signature: true
+
+  # User & Group Permissions
+  permission:
+    # DM Policy: "allow" (all), "pairing" (active users only), "block"
+    dm_policy: allow
+    
+    # Group Policy: "allow" (all), "mention" (only when @bot), "block"
+    group_policy: allow
+    
+    # Whitelist/Blacklist (Leave empty to skip)
+    allowed_users: []      # Example: ["ou_12345", "ou_67890"]
+    blocked_users: []
+    
+    # Slash Command rate limit (requests per second per user)
+    # Default: 10.0
+    slash_command_rate_limit: 10.0
+
+# -----------------------------------------------------------------------------
+# Session Lifecycle
+# -----------------------------------------------------------------------------
+session:
+  timeout_minutes: 30            # Minutes of inactivity before cleanup
+  cleanup_interval_minutes: 5    # Frequency of scanning for expired sessions
+
+# -----------------------------------------------------------------------------
+# Advanced Settings (Optional)
+# -----------------------------------------------------------------------------
+# Max message length in bytes (Feishu default: 4096)
+# max_message_len: 4096
+
+# Command rate limit configuration
+# command_rate_limit: 10.0       # Requests per second
+# command_rate_burst: 20         # Burst capacity
+
+# Custom system prompt for specific use cases
+# custom_system_prompt: ""
