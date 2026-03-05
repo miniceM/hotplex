@@ -196,9 +196,8 @@ func main() {
 	http.Handle("/metrics", metricsHandler)
 
 	// 3. Initialize ChatApps adapters
-	chatappsEnabled := os.Getenv("HOTPLEX_CHATAPPS_ENABLED")
 	var chatappsMgr *chatapps.AdapterManager
-	if chatappsEnabled == "true" {
+	if chatapps.IsEnabled(*configDir) {
 		var chatappsHandler http.Handler
 		var err error
 		// configDir from --config flag takes priority over env var

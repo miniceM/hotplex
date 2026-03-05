@@ -10,7 +10,7 @@
     <a href="LICENSE"><img src="https://img.shields.io/github/license/hrygo/hotplex?style=for-the-badge&color=blue" alt="License"></a>
   </p>
   <p>
-    <a href="README.md">English</a> • <b>简体中文</b> • <a href="docs/sdk-guide_zh.md">开发者手册</a> • <a href="https://hrygo.github.io/hotplex/">文档站点</a>
+    <a href="README.md">English</a> • <b>简体中文</b> • <a href="docs/sdk-guide_zh.md">开发者手册</a> • <a href="docs/webapps/slack-setup-beginner_zh.md">Slack 接入保姆级教程</a> • <a href="https://hrygo.github.io/hotplex/">文档站点</a>
   </p>
 </div>
 
@@ -38,40 +38,20 @@
 
 ---
 
-## 🏗️ 架构设计
-
-hotplex 实现了 **接入层（Access Layer）** 与 **引擎执行层（Engine Layer）** 的彻底解耦，它利用有限容量的 Go Channel (管道) 和 WaitGroup 机制，大规模场景下依然能够保证确定性且安全的并发 I/O 处理。
-
-### 1. 系统拓扑图
-<div align="center">
-  <img src="docs/images/topology.svg" alt="hotplex System Architecture" width="90%">
-</div>
-
-- **接入层 (Access Layer)**：支持原生的 Go SDK 本地调用，或者远程的 API 接口请求 (`hotplexd`)。包含专用的 **OpenCode HTTP/SSE 兼容性处理器**。
-- **引擎层 (Engine Layer)**：以单例模式管理资源管理器、会话池分配、配置属性覆盖以及核心安全 WAF。
-- **进程层 (OS Process Layer)**：实际工作的子进程，位于 PGID 级别的隔离工作区内，并被严格锁定在指定的目录边界中工作。
-
-### 2. 全双工异步事件流
-<div align="center">
-  <img src="docs/images/async-stream.svg" alt="hotplex 全双工流式引擎" width="90%">
-</div>
-
-不同于标准 RPC 或 REST 的“请求-响应”循环模式，hotplex 深度接入 Go 的非阻塞并发模型中。`stdin`、`stdout` 和 `stderr` 在客户端和服务端子进程之间进行持续的双向管道通信，确保本地 LLM 工具能够以亚秒级的速度输出令牌（Token）。
-
----
-
 ## 🚀 快速开始
 
 ### 推荐：ChatApps 平台接入 (Slack、Telegram、飞书、钉钉等)
 
 生产环境的**主要接入方式**。通过即时通讯平台直接与 AI 智能体对话。
 
-| 平台 | 状态 |
-|------|------|
-| **Slack** | ✅ 稳定 - Block Kit、流式输出、Assistant Status |
-| **Telegram** | ✅ 稳定 |
-| **飞书** | ✅ 稳定 |
-| **钉钉** | ✅ 稳定 |
+> 🌈 **Slack 新手通道**：不想看复杂设置？👉 **[点击这里查看 Slack 零基础保姆级接入教程](docs/webapps/slack-setup-beginner_zh.md)**，图文并茂、5 分钟搞定！
+
+| 平台         | 状态                                           |
+| ------------ | ---------------------------------------------- |
+| **Slack**    | ✅ 稳定 - Block Kit、流式输出、Assistant Status |
+| **Telegram** | ✅ 稳定                                         |
+| **飞书**     | ✅ 稳定                                         |
+| **钉钉**     | ✅ 稳定                                         |
 
 **分钟级快速启动：**
 ```bash
@@ -92,9 +72,9 @@ hotplexd
 
 适用于自定义集成或微服务架构。
 
-| 方式 | 适用场景 |
-|------|---------|
-| **Go SDK** | 嵌入式集成、零开销 |
+| 方式           | 适用场景                     |
+| -------------- | ---------------------------- |
+| **Go SDK**     | 嵌入式集成、零开销           |
 | **独立服务端** | 多语言客户端、WebSocket 连接 |
 
 **快速示例 (Go SDK)：**
@@ -108,6 +88,28 @@ engine.Execute(ctx, cfg, "你的指令", callback)
 ```
 
 → **[完整 SDK 接入指南](docs/quick-start_zh.md#选项-2go-sdk)** 查看详细文档
+
+---
+
+## 🏗️ 架构设计
+
+hotplex 实现了 **接入层（Access Layer）** 与 **引擎执行层（Engine Layer）** 的彻底解耦，它利用有限容量的 Go Channel (管道) 和 WaitGroup 机制，大规模场景下依然能够保证确定性且安全的并发 I/O 处理。
+
+### 1. 系统拓扑图
+<div align="center">
+  <img src="docs/images/topology.svg" alt="hotplex System Architecture" width="90%">
+</div>
+
+- **接入层 (Access Layer)**：支持原生的 Go SDK 本地调用，或者远程的 API 接口请求 (`hotplexd`)。包含专用的 **OpenCode HTTP/SSE 兼容性处理器**。
+- **引擎层 (Engine Layer)**：以单例模式管理资源管理器、会话池分配、配置属性覆盖以及核心安全 WAF。
+- **进程层 (OS Process Layer)**：实际工作的子进程，位于 PGID 级别的隔离工作区内，并被严格锁定在指定的目录边界中工作。
+
+### 2. 全双工异步事件流
+<div align="center">
+  <img src="docs/images/async-stream.svg" alt="hotplex 全双工流式引擎" width="90%">
+</div>
+
+不同于标准 RPC 或 REST 的“请求-响应”循环模式，hotplex 深度接入 Go 的非阻塞并发模型中。`stdin`、`stdout` 和 `stderr` 在客户端和服务端子进程之间进行持续的双向管道通信，确保本地 LLM 工具能够以亚秒级的速度输出令牌（Token）。
 
 ---
 

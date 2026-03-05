@@ -1,6 +1,6 @@
 # 🤖 HotPlex: AI Agent Engineering Protocol
 
-**Project Status**: v0.17.0 | **Core Role**: High-performance AI Agent Control Plane (Cli-as-a-Service).
+**Project Status**: v0.19.0 | **Core Role**: High-performance AI Agent Control Plane (Cli-as-a-Service).
 This document defines the operational boundaries and technical DNA for AI agents working on **hotplex**.
 
 ---
@@ -9,6 +9,20 @@ This document defines the operational boundaries and technical DNA for AI agents
 - **Cli-as-a-Service**: Bridge high-power AI CLIs (Claude Code, OpenCode) into production-ready interactive services.
 - **Persistence**: Eliminate spin-up overhead via long-lived, isolated process sessions.
 - **Tech Stack**: Go 1.25 | WebSocket Gateway | Regex WAF | PGID Isolation.
+
+---
+
+## Quick Start
+
+```bash
+make build        # 构建 hotplexd 守护进程
+make test         # 运行单元测试
+make test-race    # 运行竞态检测测试
+make run          # 构建并前台运行
+make lint         # 运行 golangci-lint
+```
+
+环境配置：复制 `.env.example` 到 `.env` 并填写凭证。
 
 ---
 
@@ -40,6 +54,7 @@ This document defines the operational boundaries and technical DNA for AI agents
 
 - **Entrypoints**: `hotplex.go` (Public SDK), `client.go` (Interface), `cmd/hotplexd/` (Daemon).
 - **Orchestration**: `engine/runner.go` (I/O Multiplexer & Singleton).
+- **Intelligence**: `brain/` (Native Brain - orchestration, routing, memory compression).
 - **Adapters (ACL Layer)**: 
     - `provider/`: Translates CLI protocols (Claude/OpenCode).
     - `chatapps/`: Translates social platforms (Slack/TG/Ding). `engine_handler.go` is the bridge.

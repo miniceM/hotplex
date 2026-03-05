@@ -20,6 +20,24 @@ import (
 	"github.com/hrygo/hotplex/provider"
 )
 
+// IsEnabled returns true if ChatApps should be activated based on environment variables or flags.
+// It returns true if any of the following is true:
+// 1. HOTPLEX_CHATAPPS_ENABLED environment variable is "true"
+// 2. configDir parameter is not empty (explicitly set via --config flag)
+// 3. HOTPLEX_CHATAPPS_CONFIG_DIR environment variable is not empty
+func IsEnabled(configDir string) bool {
+	if os.Getenv("HOTPLEX_CHATAPPS_ENABLED") == "true" {
+		return true
+	}
+	if configDir != "" {
+		return true
+	}
+	if os.Getenv("HOTPLEX_CHATAPPS_CONFIG_DIR") != "" {
+		return true
+	}
+	return false
+}
+
 // Setup initializes all enabled ChatApps and their dedicated Engines.
 // It returns an http.Handler that handles all webhook routes.
 // The configDir parameter takes priority over HOTPLEX_CHATAPPS_CONFIG_DIR environment variable.

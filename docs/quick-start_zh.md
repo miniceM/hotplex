@@ -52,6 +52,8 @@ brew install opencode
 
 通过 Slack、Telegram、飞书等即时通讯平台直接与 AI 智能体对话。这是 HotPlex 的**主要接入方式**，适合生产环境使用。
 
+> 🌈 **Slack 新手特别推荐**：初次配置 Slack 机器人？请先阅读 **[Slack 零基础保姆级接入教程](webapps/slack-setup-beginner_zh.md)**，5 分钟完成手动点击操作。
+
 ### 支持的平台
 
 | 平台         | 协议                  | 状态     |
@@ -239,7 +241,8 @@ python main.py
 ## 下一步
 
 - [ChatApps 架构概览](chatapps/chatapps-architecture.md) - 了解多平台接入设计
-- [Slack 集成手册](chatapps/chatapps-slack-manual-zh.md) - Slack 完整配置指南
+- [Slack 接入保姆级教程](webapps/slack-setup-beginner_zh.md) - 5 分钟图文分步教程
+- [Slack 集成手册](chatapps/chatapps-slack-manual-zh.md) - Slack 完整技术配置指南
 - [飞书集成手册](chatapps/chatapps-feishu-manual.md) - 飞书配置指南
 - [架构深度解析](architecture_zh.md) - 了解 HotPlex 的工作原理
 - [SDK 开发者指南](sdk-guide_zh.md) - 完整的 SDK 参考

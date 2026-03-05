@@ -10,7 +10,7 @@
     <a href="LICENSE"><img src="https://img.shields.io/github/license/hrygo/hotplex?style=for-the-badge&color=blue" alt="License"></a>
   </p>
   <p>
-    <b>English</b> • <a href="README_zh.md">简体中文</a> • <a href="docs/sdk-guide.md">SDK Guide</a> • <a href="https://hrygo.github.io/hotplex/">Docs Site</a>
+    <b>English</b> • <a href="README_zh.md">简体中文</a> • <a href="docs/sdk-guide.md">SDK Guide</a> • <a href="docs/webapps/slack-setup-beginner.md">Slack Beginner Guide</a> • <a href="https://hrygo.github.io/hotplex/">Docs Site</a>
   </p>
 </div>
 
@@ -38,40 +38,20 @@ Developers no longer need to endure the multi-second latency of restarting CLI e
 
 ---
 
-## 🏗️ Architecture Design
-
-hotplex decouples the **access layer** from the **execution engine layer**, leveraging bounded Go channels and WaitGroups to achieve deterministic, safe concurrent I/O handling at scale.
-
-### 1. System Topology
-<div align="center">
-  <img src="docs/images/topology.svg" alt="hotplex System Architecture" width="90%">
-</div>
-
-- **Access Layer**: Supports native Go SDK calls or remote API connections (`hotplexd`). Includes a dedicated **OpenCode HTTP/SSE compatibility handler**.
-- **Engine Layer**: Singleton resource manager managing the session pool, configuration overrides, and security WAF.
-- **Process Layer**: Sub-process worker isolated in PGID-level workspaces, locked to specific directory boundaries.
-
-### 2. Full-Duplex Async Streaming
-<div align="center">
-  <img src="docs/images/async-stream.svg" alt="hotplex Full-Duplex Stream Engine" width="90%">
-</div>
-
-Unlike standard RPC or REST request-response cycles, hotplex taps directly into Go's non-blocking concurrency model. `stdin`, `stdout`, and `stderr` streams are piped continuously between the client and child process, ensuring sub-second token delivery from local LLM commands.
-
----
-
 ## 🚀 Quick Start
 
 ### Recommended: ChatApps Platform (Slack, Telegram, Feishu, etc.)
 
 The primary access channel for production environments. Interact with AI agents directly through messaging platforms.
 
-| Platform | Status |
-|----------|--------|
-| **Slack** | ✅ Stable - Block Kit, Streaming, Assistant Status |
-| **Telegram** | ✅ Stable |
-| **Feishu** | ✅ Stable |
-| **DingTalk** | ✅ Stable |
+> 🌈 **Slack Setup for Beginners**: Don't want to read complex docs? 👉 **[Check out our Zero-to-Hero Slack Setup Guide](docs/webapps/slack-setup-beginner.md)** for a simple, click-by-click tutorial!
+
+| Platform     | Status                                            |
+| ------------ | ------------------------------------------------- |
+| **Slack**    | ✅ Stable - Block Kit, Streaming, Assistant Status |
+| **Telegram** | ✅ Stable                                          |
+| **Feishu**   | ✅ Stable                                          |
+| **DingTalk** | ✅ Stable                                          |
 
 **Get started in minutes:**
 ```bash
@@ -92,9 +72,9 @@ hotplexd
 
 For custom integrations or microservice architectures.
 
-| Method | Use Case |
-|--------|----------|
-| **Go SDK** | Embedded integration, zero-overhead |
+| Method                | Use Case                             |
+| --------------------- | ------------------------------------ |
+| **Go SDK**            | Embedded integration, zero-overhead  |
 | **Standalone Server** | Multi-language clients via WebSocket |
 
 **Quick example (Go SDK):**
@@ -108,6 +88,28 @@ engine.Execute(ctx, cfg, "Your prompt here", callback)
 ```
 
 → **[Full SDK Guide](docs/quick-start.md#option-2-go-sdk)** for detailed documentation
+
+---
+
+## 🏗️ Architecture Design
+
+hotplex decouples the **access layer** from the **execution engine layer**, leveraging bounded Go channels and WaitGroups to achieve deterministic, safe concurrent I/O handling at scale.
+
+### 1. System Topology
+<div align="center">
+  <img src="docs/images/topology.svg" alt="hotplex System Architecture" width="90%">
+</div>
+
+- **Access Layer**: Supports native Go SDK calls or remote API connections (`hotplexd`). Includes a dedicated **OpenCode HTTP/SSE compatibility handler**.
+- **Engine Layer**: Singleton resource manager managing the session pool, configuration overrides, and security WAF.
+- **Process Layer**: Sub-process worker isolated in PGID-level workspaces, locked to specific directory boundaries.
+
+### 2. Full-Duplex Async Streaming
+<div align="center">
+  <img src="docs/images/async-stream.svg" alt="hotplex Full-Duplex Stream Engine" width="90%">
+</div>
+
+Unlike standard RPC or REST request-response cycles, hotplex taps directly into Go's non-blocking concurrency model. `stdin`, `stdout`, and `stderr` streams are piped continuously between the client and child process, ensuring sub-second token delivery from local LLM commands.
 
 ---
 
