@@ -3,5 +3,5 @@ node_modules/
 .vitepress/cache/
 public/images/png
 public/*.png
-# public/*.svg
+public/*.svg
 # package-lock.json
