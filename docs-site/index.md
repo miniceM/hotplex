@@ -167,7 +167,7 @@ features:
 </div>
 
 <div style="width: 100%; overflow: hidden; border-radius: 12px; margin: 40px 0;">
-  <img src="/hotplex/images/hotplex_beaver_banner.webp" alt="HotPlex Mascot Banner" style="width: 100%; height: auto; object-fit: cover;" />
+  <img src="/images/hotplex_beaver_banner.webp" alt="HotPlex Mascot Banner" style="width: 100%; height: auto; object-fit: cover;" />
 </div>
 
 ---
