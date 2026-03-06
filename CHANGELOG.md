@@ -2,30 +2,72 @@
 
 ## [v0.21.0] - 2026-03-06
 
-### 🤖 MultiBot @ Routing & Configuration Optimization
+### 🚀 Major Feature Release
 
-This release introduces intelligent @ routing for multiple bot instances in the same Slack channel, along with comprehensive configuration cleanup separating sensitive credentials from behavior settings.
+This release delivers significant architectural enhancements including Storage Plugin infrastructure, Pi Provider integration, Secrets Management, MultiBot @ routing, and Slack MessageBuilder refactoring.
 
 ### Added
+
+#### Storage Plugin System
+- **Pluggable Storage Interface** - New `plugins/storage/` package with factory-based storage backend selection
+- **Memory Storage** - In-memory backend for testing and ephemeral deployments
+- **SQLite Storage** - File-based persistent storage for single-node deployments
+- **PostgreSQL Storage** - Production-grade storage with connection pooling and health checks
+- **Stream Storage Layer** - `chatapps/base/stream_storage.go` for real-time message persistence
+- **Message Store Plugin** - `chatapps/base/message_store_plugin.go` for chatapps integration
+- **Storage Config Guide** - Comprehensive documentation at `docs/storage-plugin-config-guide.md`
+
+#### Pi Provider Integration
+- **New AI Provider** - `provider/pi_provider.go` with full streaming support
+- **Priority-based Failover** - Multi-model priority routing with automatic failover
+- **Budget Management** - Token budget tracking and enforcement
+- **Circuit Breaker** - Resilience pattern for API failure handling
+- **Provider Documentation** - Complete guide at `docs/providers/pi.md`
+
+#### Secrets Management Infrastructure (#71)
+- **Provider Interface** - `internal/secrets/provider.go` defines extensible secret provider contract
+- **Environment Provider** - `EnvProvider` for loading secrets from environment variables
+- **Vault Provider Stub** - `VaultProvider` ready for HashiCorp Vault integration
+- **Manager with Caching** - Central manager with TTL-based caching
 
 #### MultiBot Mode
 - **@ Routing** - New `multibot` GroupPolicy for intelligent message routing:
   - `@BotA` → BotA responds, BotB ignores
   - `@BotA @BotB` → Both respond
   - No @ → All bots send polite broadcast response
-- **BroadcastResponder Interface** - Extensible interface for generating polite responses to broadcast messages:
-  - `StaticBroadcastResponder` - Default implementation with fixed response
-  - Future integration with native brain for intelligent responses
-- **Mention Extraction** - `ExtractMentionedUsers()` function to parse `<@USER_ID>` mentions from message text
-- **Multibot Decision Logic** - `ShouldRespondInMultibotMode()` and `IsBroadcastMessage()` helper methods
+- **BroadcastResponder Interface** - Extensible interface for generating polite responses to broadcast messages
+- **Mention Extraction** - `ExtractMentionedUsers()` function to parse `<@USER_ID>` mentions
 
 ### Changed
 
+#### Slack MessageBuilder Refactoring (#193)
+- **Specialized Sub-builders** - Split monolithic MessageBuilder into focused components:
+  - `HeaderBuilder` - Title and header construction
+  - `SectionBuilder` - Content sections with markdown support
+  - `ActionBuilder` - Interactive elements (buttons, selects)
+  - `ContextBuilder` - Metadata and context blocks
+- **Improved Testability** - Each sub-builder has dedicated unit tests
+- **DRY Compliance** - Eliminated duplicate block construction code
+
 #### Configuration Optimization
-- **Credential/Behavior Separation** - `.env` files now contain only sensitive credentials (tokens, secrets, keys)
-- **YAML for Behavior** - Non-sensitive settings (mode, timeout, policy) moved to `chatapps/configs/*.yaml`
-- **Simplified .env.example** - Reduced from ~200 lines to ~80 lines with clear documentation
-- **Removed Redundancy** - Deleted `.env.simple` (redundant with `.env.example`)
+- **Credential/Behavior Separation** - `.env` files now contain only sensitive credentials
+- **YAML for Behavior** - Non-sensitive settings moved to `chatapps/configs/*.yaml`
+- **Simplified .env.example** - Reduced from ~200 lines to ~80 lines
+
+### Fixed
+
+#### Engine Stability (#207)
+- **Dead Session Auto-recovery** - Engine now automatically detects and recovers dead sessions
+- **Graceful Degradation** - Sessions in failed state no longer block new requests
+
+#### Event Deduplication (#121)
+- **Goroutine Leak Fix** - Added `sync.WaitGroup` for graceful shutdown in dedup package
+- **Context Handling** - Improved context cancellation in aggregator processors
+
+#### Webhook Infrastructure
+- **WebhookRunner Improvements** - Added `WebhookRunnerOption` for dependency injection
+- **Default Constants** - Extracted magic numbers into named constants
+- **Interface Compliance** - Added compile-time verification across all providers
 
 ### Configuration Example
 
@@ -39,16 +81,12 @@ security:
       Hello! I'm ready to help. Please @mention me if you'd like me to respond.
 ```
 
-Reference commits:
+### Reference Commits
+- e88fff7 feat: merge PRs #210 #209 #208 #206 #203 #178 #99
+- 2be34c6 refactor(slack): split MessageBuilder into specialized sub-builders
+- 9a34611 fix(engine): add auto-recovery for dead sessions
 - dfb7f3d feat(slack): add ExtractMentionedUsers and ShouldRespondInMultibotMode helpers
-- 4acbb2d feat(slack): add multibot filter in HTTP mode (events.go)
-- eb23de1 feat(slack): add multibot filter in Socket Mode (socketmode.go)
 - b4a626c feat(slack): add BroadcastResponder interface
-- f879eec feat(slack): integrate BroadcastResponder
-- 68c8dc2 feat(config): add BroadcastResponse config option
-- f80adc5 chore(config): update YAML configs for multibot mode
-- e93f9eb refactor(config): separate sensitive credentials from behavior config
-- 3e3a881 chore: remove redundant .env.simple
 
 ## [v0.20.0] - 2026-03-06
 
