@@ -2,28 +2,26 @@
 
 > 目标：将 hotplex 打造成 AI Agent 运行时领域的标杆项目  
 > 原则：零成本（除 LLM Token 外），自主执行  
-> 当前状态：7 Stars | 3 Forks | 创建于 2026-02-20
+> ⚠️ 关键步骤需在 Slack 通知头儿审核后方可执行
 
 ---
 
 ## 📊 阶段一：GitHub 基础优化（Week 1）
 
 ### 1.1 Repository  Metadata 优化
-- [ ] **描述 (Description)** 优化 - 当前较冗长，提炼为 20 字内
-  - 建议：`AI Agent Runtime Engine: Long-lived sessions for Claude Code & OpenCode`
-- [ ] **Topics 标签** - 添加高搜索量相关标签
-  - `ai-agents`, `claude`, `opencode`, `cli`, `golang`, `websocket`, `streaming`, `devops`, `automation`, `chatbot`
-- [ ] **Website** - 指向文档站 `https://hrygo.github.io/hotplex/`
+- [x] **描述 (Description)** 优化 - 当前较冗长，提炼为 20 字内 ✅
+- [x] **Topics 标签** - 添加高搜索量相关标签 ✅
+- [x] **Website** - 指向文档站 `https://hrygo.github.io/hotplex/` ✅
 
 ### 1.2 README 强化
-- [ ] 添加 **animated banner**（ASCII 或 SVG 动效）
-- [ ] 添加 **Stars 增长计数器** 徽章
-- [ ] **Why hotplex?** 章节增加具体数字（vs 直接调用 CLI 的延迟对比）
-- [ ] 添加 **Real-world use cases** 真实案例截图
+- [x] 添加 **animated banner**（ASCII 或 SVG 动效）✅
+- [x] 添加 **Stars 增长计数器** 徽章 ✅
+- [x] **Why hotplex?** 章节增加具体数字（vs 直接调用 CLI 的延迟对比）
+- [x] 添加 **Real-world use cases** 真实案例截图
 
 ### 1.3 徽章体系完善
-- [ ] 添加 **Discord 邀请链接** 徽章
-- [ ] 添加 **Twitter/X** 徽章
+- [ ] 添加 **Discord 邀请链接** 徽章 ⚠️ 需要提供 Discord 邀请链接
+- [ ] 添加 **Twitter/X** 徽章 ⚠️ 需要确认官方 Twitter 账号
 - [ ] 添加 **Go Reference** 链接
 
 ---
@@ -144,14 +142,14 @@
 - [x] 5. 推送 PROMOTION_PLAN.md 到仓库 ✅
 
 ### 本周任务
-- [ ] 6. 写第一篇技术博客（发布到掘金 + dev.to）
-- [ ] 7. 创建第一期 Release Notes
+- [ ] 6. 写第一篇技术博客（发布到掘金 + dev.to）⚠️ 需审核内容
+- [ ] 7. 创建第一期 Release Notes ⚠️ 需审核
 - [ ] 8. 提交到其他 awesome 列表（如 awesome-ai-agents）
 
-### 待办 - 需要你协助
-- [ ] 🔔 **提供 Slack 频道 ID** - 用于添加 Discord/社区链接徽章
+### ⚠️ 需要头儿协助
+- [ ] 🔔 **提供 Discord 邀请链接** - 用于添加社交徽章
 - [ ] 🔔 **确认官方 Twitter 账号** - 用于添加社交链接
-- [ ] 🔔 **提供个人邮箱** - 用于 GitHub 社区项目申请
+- [ ] 🔔 **审核技术博客内容** - 发布前需确认
 
 ---
 
