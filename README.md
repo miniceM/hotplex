@@ -1,212 +1,200 @@
 <div align="center">
-  <img src="docs/images/hotplex_beaver_banner.webp" alt="hotplex" width="100%"/>
-  <h1>hotplex</h1>
-  <p><b>Transforming AI CLI Agents into Production-Ready Interactive Services</b></p>
-  <p><i>Break the limits of one-off CLI tasks. Leverage full-duplex, stateful sessions for instant interaction, secure isolation, and effortless system integration.</i></p>
+  <img src="docs/images/hotplex_beaver_banner.webp" alt="HotPlex" width="100%"/>
+
+  <h1>HotPlex</h1>
+
+  <p><strong>AI Agent Control Plane — Turn AI CLIs into Production-Ready Services</strong></p>
 
   <p>
-    <a href="https://github.com/hrygo/hotplex/releases"><img src="https://img.shields.io/github/v/release/hrygo/hotplex?style=for-the-badge&logo=go&color=00ADD8" alt="Latest Release"></a>
-    <a href="https://goreportcard.com/report/github.com/hrygo/hotplex"><img src="https://goreportcard.com/badge/github.com/hrygo/hotplex?style=for-the-badge" alt="Go Report Card"></a>
-    <a href="LICENSE"><img src="https://img.shields.io/github/license/hrygo/hotplex?style=for-the-badge&color=blue" alt="License"></a>
-    <a href="https://github.com/hrygo/hotplex/stargazers"><img src="https://img.shields.io/github/stars/hrygo/hotplex?style=for-the-badge" alt="Stars"></a>
-    <a href="https://github.com/hrygo/hotplex/fork"><img src="https://img.shields.io/github/forks/hrygo/hotplex?style=for-the-badge" alt="Forks"></a>
+    <a href="https://github.com/hrygo/hotplex/releases/latest">
+      <img src="https://img.shields.io/github/v/release/hrygo/hotplex?style=flat-square&logo=go&color=00ADD8" alt="Release">
+    </a>
+    <a href="https://pkg.go.dev/github.com/hrygo/hotplex">
+      <img src="https://img.shields.io/badge/go-reference-00ADD8?style=flat-square&logo=go" alt="Go Reference">
+    </a>
+    <a href="https://goreportcard.com/report/github.com/hrygo/hotplex">
+      <img src="https://goreportcard.com/badge/github.com/hrygo/hotplex?style=flat-square" alt="Go Report">
+    </a>
+    <a href="LICENSE">
+      <img src="https://img.shields.io/github/license/hrygo/hotplex?style=flat-square&color=blue" alt="License">
+    </a>
+    <a href="https://github.com/hrygo/hotplex/stargazers">
+      <img src="https://img.shields.io/github/stars/hrygo/hotplex?style=flat-square" alt="Stars">
+    </a>
   </p>
+
   <p>
-    <b>English</b> • <a href="README_zh.md">简体中文</a> • <a href="docs/sdk-guide.md">SDK Guide</a> • <a href="docs/chatapps/slack-setup-beginner.md">Slack Beginner Guide</a> • <a href="https://hrygo.github.io/hotplex/">Docs Site</a>
+    <a href="#quick-start">Quick Start</a> •
+    <a href="#features">Features</a> •
+    <a href="https://hrygo.github.io/hotplex/">Docs</a> •
+    <a href="docs/chatapps/slack-setup-beginner.md">Slack Guide</a> •
+    <a href="README_zh.md">简体中文</a>
   </p>
 </div>
 
-<br/>
-
-## ⚡ What is hotplex?
-
-**hotplex** is more than just a process multiplexer; it is the **Strategic Bridge** for AI agent engineering.
-
-Our **First Principle** is: **Upgrade existing AI CLI tools (like Claude Code, OpenCode) from "human-oriented terminal tools" into "system-ready, long-lived interactive services" (Cli-as-a-Service).**
-
-Developers no longer need to endure the multi-second latency of restarting CLI environments in headless mode. By maintaining a persistent, full-duplex session pool, hotplex eliminates the interaction gap caused by cold starts and provides a unified integration layer. Whether building professional AI products or automated pipelines, hotplex makes elite agent capabilities as easy to call as a standard API.
-
-<div align="center">
-  <img src="docs/images/features.svg" alt="hotplex Features Outline" width="100%">
-</div>
-
-### Why hotplex?
-- 🔄 **Cli-as-a-Service**: Shift from "run-and-exit" to persistent sessions with continuous instruction flow and context preservation.
-- 🧩 **Ease of Integration**: A unified Go SDK and protocol gateway that plugs top-tier Agent capabilities into your product instantly.
-- 🚀 **Zero Spin-up Overhead**: Eliminate the long wait times for Node.js/Python runtimes to provide sub-second user feedback.
-- 🛡️ **Fast & Balanced Security**: Command-level WAF and PGID isolation provide a "protective glove" for AI shell operations.
-- 💬 **ChatApps Integration**: Connect HotPlex to platforms like **Slack** (native Block Kit, streaming, Assistant Status API) and **DingTalk**, enabling AI collaboration directly in your team's workspace.
-- 🔌 **Ready for Scale**: Support for native Go embedding or standalone Proxy mode with WebSocket and OpenCode-compatible protocols.
-
 ---
 
-## 🚀 Quick Start
+## Overview
 
-### Recommended: ChatApps Platform (Slack, Telegram, Feishu, etc.)
+HotPlex transforms AI CLI tools (Claude Code, OpenCode) from "run-and-exit" commands into **persistent, stateful services** with full-duplex streaming.
 
-The primary access channel for production environments. Interact with AI agents directly through messaging platforms.
+**Why HotPlex?**
 
-> 🌈 **Slack Setup for Beginners**: Don't want to read complex docs? 👉 **[Check out our Zero-to-Hero Slack Setup Guide](docs/chatapps/slack-setup-beginner.md)** for a simple, click-by-click tutorial!
+- **Zero Spin-up Overhead** — Eliminate 3-5 second CLI cold starts with persistent session pooling
+- **Cli-as-a-Service** — Continuous instruction flow and context preservation across interactions
+- **Production-Ready Security** — Regex WAF, PGID process isolation, and filesystem boundaries
+- **Multi-Platform ChatApps** — Native Slack, Telegram, Feishu, DingTalk integration
+- **Simple Integration** — Go SDK embedding or standalone WebSocket server
 
-| Platform     | Status                                            |
-| ------------ | ------------------------------------------------- |
-| **Slack**    | ✅ Stable - Block Kit, Streaming, Assistant Status |
-| **Telegram** | ✅ Stable                                          |
-| **Feishu**   | ✅ Stable                                          |
-| **DingTalk** | ✅ Stable                                          |
+## Quick Start
 
-**Get started in minutes:**
+### Prerequisites
+
+- Go 1.25+
+- Claude Code CLI or OpenCode CLI (optional, for AI capabilities)
+
+### Install
+
 ```bash
-# 1. Run with --config flag (recommended, highest priority)
-hotplexd --config chatapps/configs
+# From source
+git clone https://github.com/hrygo/hotplex.git
+cd hotplex
+make build
 
-# 2. Or use environment variables
-export HOTPLEX_CHATAPPS_ENABLED=true
-export HOTPLEX_CHATAPPS_CONFIG_DIR=chatapps/configs
-hotplexd
+# Or download binary from releases
+# https://github.com/hrygo/hotplex/releases
 ```
 
-→ **[Full ChatApps Guide](docs/quick-start.md)** - Step-by-step tutorial for all platforms
+### Configure
 
----
-
-### Alternative: Go SDK or Standalone Server
-
-For custom integrations or microservice architectures.
-
-| Method                | Use Case                             |
-| --------------------- | ------------------------------------ |
-| **Go SDK**            | Embedded integration, zero-overhead  |
-| **Standalone Server** | Multi-language clients via WebSocket |
-
-**Quick example (Go SDK):**
 ```bash
-go get github.com/hrygo/hotplex
+# Copy example environment
+cp .env.example .env
+
+# Edit with your credentials
+# For ChatApps, configure chatapps/configs/*.yaml
 ```
+
+### Run
+
+```bash
+# Start with ChatApps (recommended for production)
+./dist/hotplexd --config chatapps/configs
+
+# Or start standalone server
+./dist/hotplexd
+```
+
+**That's it!** Your AI agent service is now running.
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Session Pooling** | Long-lived CLI processes with instant reconnection |
+| **Full-Duplex Streaming** | Sub-second token delivery via Go channels |
+| **Regex WAF** | Block destructive commands (`rm -rf /`, `mkfs`, etc.) |
+| **PGID Isolation** | Clean process termination, no zombie processes |
+| **ChatApps** | Slack (Block Kit, Streaming, Assistant Status), Telegram, Feishu, DingTalk |
+| **Go SDK** | Embed directly in your Go application with zero overhead |
+| **WebSocket Gateway** | Language-agnostic access via `hotplexd` daemon |
+| **OpenTelemetry** | Built-in metrics and tracing support |
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Access Layer                           │
+│         Go SDK  │  WebSocket  │  ChatApps Adapters          │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      Engine Layer                           │
+│    Session Pool  │  Config Manager  │  Security WAF         │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     Process Layer                           │
+│    Claude Code  │  OpenCode  │  Isolated Workspaces         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Usage Examples
+
+### Go SDK
 
 ```go
-engine, _ := hotplex.NewEngine(hotplex.EngineOptions{Timeout: 5 * time.Minute})
-engine.Execute(ctx, cfg, "Your prompt here", callback)
+import "github.com/hrygo/hotplex"
+
+engine, _ := hotplex.NewEngine(hotplex.EngineOptions{
+    Timeout: 5 * time.Minute,
+})
+
+engine.Execute(ctx, cfg, "Refactor this function", func(event Event) {
+    fmt.Println(event.Content)
+})
 ```
 
-→ **[Full SDK Guide](docs/quick-start.md#option-2-go-sdk)** for detailed documentation
+### ChatApps (Slack)
 
----
-
-## 🏗️ Architecture Design
-
-hotplex decouples the **access layer** from the **execution engine layer**, leveraging bounded Go channels and WaitGroups to achieve deterministic, safe concurrent I/O handling at scale.
-
-### 1. System Topology
-<div align="center">
-  <img src="docs/images/topology.svg" alt="hotplex System Architecture" width="90%">
-</div>
-
-- **Access Layer**: Supports native Go SDK calls or remote API connections (`hotplexd`). Includes a dedicated **OpenCode HTTP/SSE compatibility handler**.
-- **Engine Layer**: Singleton resource manager managing the session pool, configuration overrides, and security WAF.
-- **Process Layer**: Sub-process worker isolated in PGID-level workspaces, locked to specific directory boundaries.
-
-### 2. Full-Duplex Async Streaming
-<div align="center">
-  <img src="docs/images/async-stream.svg" alt="hotplex Full-Duplex Stream Engine" width="90%">
-</div>
-
-Unlike standard RPC or REST request-response cycles, hotplex taps directly into Go's non-blocking concurrency model. `stdin`, `stdout`, and `stderr` streams are piped continuously between the client and child process, ensuring sub-second token delivery from local LLM commands.
-
----
-
-## 📖 Detailed Documentation
-
-### Core Technical Manuals
-- **[ChatApps Manual](chatapps/README.md)**: Multi-platform connector (Slack, DingTalk, Feishu) with native Block Kit support and AI-native UX patterns.
-- **[Engine Manual](engine/README.md)**: Core control plane, process hot-multiplexing, and execution logic.
-- **[Provider Manual](provider/README.md)**: AI agent abstraction (Claude Code, OpenCode) and event normalization.
-- **[Internal Subsystems](internal/README.md)**: Foundational security WAF, session pooling, and system utilities.
-
-### Guides & Manuals
-- **[Architecture Deep Dive](docs/architecture.md)**: Explore the inner workings, security protocols, and session management logic.
-- **[SDK Developer Guide](docs/sdk-guide.md)**: A comprehensive manual for integrating HotPlex into your Go applications.
-- **[Slack Integration Guide](docs-site/guide/chatapps-slack.md)**: Comprehensive guide for connecting HotPlex to Slack with native streaming.
-- **[Observability Guide](docs/observability-guide.md)**: OpenTelemetry and Prometheus integration.
-- **[Docker Deployment](docs/docker-deployment.md)**: Container and Kubernetes deployment.
-- **[Production Guide](docs/production-guide.md)**: Production deployment best practices.
-
----
-
-## 📂 Example Repositories
-
-Explore our ready-to-use examples to accelerated your integration:
-
-- **[go_claude_basic](_examples/go_claude_basic/main.go)**: Quick start with minimal configuration.
-- **[go_claude_lifecycle](_examples/go_claude_lifecycle/main.go)**: Multi-turn, session recovery, and PGID management in Claude.
-- **[go_opencode_basic](_examples/go_opencode_basic/main.go)**: Minimal OpenCode integration.
-- **[go_opencode_lifecycle](_examples/go_opencode_lifecycle/main.go)**: Multi-turn and session persistence in OpenCode.
-- **[node_claude_websocket](_examples/node_claude_websocket/enterprise_client.js)**: Full-duplex web integration.
-
----
-
-## 🛡️ Security Posture
-
-CLI Agents run raw shell commands generated by LLMs. **Security must not be an afterthought.** hotplex employs a deep defense-in-depth model:
-
-| Layer                      | Implementation                                 | Defense Capability                                                  |
-| :------------------------- | :--------------------------------------------- | :------------------------------------------------------------------ |
-| **I. Tool Governance**     | `AllowedTools` configuration array             | Restricts agent's internal tool registry capabilities precisely     |
-| **II. Danger WAF**         | Regex & Command string interception            | Hard blocks destructive commands like `rm -rf /`, `mkfs`, `dd`      |
-| **III. Process Isolation** | `SIGKILL` routed via Process Group ID (`PGID`) | Prevents orphaned background daemons or zombie process leaks        |
-| **IV. Filesystem Jail**    | Context Path Lockdown (`WorkDir`)              | Constrains the agent's view/edit scope strictly to the project root |
-
-<br/>
-
-<div align="center">
-  <img src="docs/images/hotplex-security.svg" alt="hotplex Security Sandbox" width="95%">
-</div>
-
----
-
-## 💡 Use Cases & Scenarios
-
-| Domain                     | Application                                                           | Benefit                                                            |
-| :------------------------- | :-------------------------------------------------------------------- | :----------------------------------------------------------------- |
-| 🌐 **Web-Based AI Clients** | Running "Claude Code" straight from a browser chat window.            | Maintains conversational state + session context persistently.     |
-| 🔧 **DevOps Automation**    | AI-driven bash scripting and live Kubernetes manifest analysis.       | Rapid remote execution without repeated Node/Python spin-up costs. |
-| 🚀 **CI/CD Intelligence**   | Smart code review, auto-formatting, and vulnerability auto-patching.  | Integrates effortlessly into GitHub Actions or GitLab CI runners.  |
-| 🕵️ **AIOps & Log Triage**   | Continuous pod monitoring with safe, controlled remediation commands. | The regex WAF ensures no accidental production outages by the AI.  |
-
----
-
-## 🗺️ Roadmap & Vision
-
-We are actively evolving hotplex to become the definitive execution engine for the Local AI ecosystem.
-
-### 🚀 Future Enhancements
-
-- [ ] **Persistent Storage**: Session state persistence across restarts for true long-lived agents.
-- [ ] **Native LLM Brain**: Built-in memory and context management for autonomous agent behavior.
-- [ ] **Advanced Isolation**: Exploring Linux Namespaces (PID/Net) and WASM-based execution sandboxes.
-- [ ] **Enhanced ChatApps**: Expanding platform support (Discord, Teams) with richer UI components.
-
----
-
-## 🤝 Contributing
-
-We welcome community contributions! Please ensure your PR passes the CI pipeline.
+```yaml
+# chatapps/configs/slack.yaml
+platform: slack
+mode: socket
+bot_user_id: ${HOTPLEX_SLACK_BOT_USER_ID}
+system_prompt: |
+  You are a helpful coding assistant.
+```
 
 ```bash
-# Verify code formatting and linting
-make lint
-
-# Run unit tests and race detector
-make test
+export HOTPLEX_SLACK_BOT_USER_ID=B12345
+export HOTPLEX_SLACK_BOT_TOKEN=xoxb-...
+export HOTPLEX_SLACK_APP_TOKEN=xapp-...
+hotplexd --config chatapps/configs
 ```
-Please read our [CONTRIBUTING.md](CONTRIBUTING.md) for architectural guidelines and PR conventions.
+
+## Documentation
+
+| Resource | Description |
+|----------|-------------|
+| [Architecture Deep Dive](docs/architecture.md) | System design, security protocols, session management |
+| [SDK Developer Guide](docs/sdk-guide.md) | Complete Go SDK reference |
+| [ChatApps Manual](chatapps/README.md) | Multi-platform integration (Slack, DingTalk, Feishu) |
+| [Slack Beginner Guide](docs/chatapps/slack-setup-beginner.md) | Zero-to-Hero Slack setup |
+| [Docker Multi-Bot Deployment](docs/docker-multi-bot-deployment.md) | Run multiple bots with one command |
+| [Docker Deployment](docs/docker-deployment.md) | Container and Kubernetes deployment |
+| [Production Guide](docs/production-guide.md) | Production best practices |
+
+## Security
+
+HotPlex employs defense-in-depth security:
+
+| Layer | Implementation | Protection |
+|-------|----------------|------------|
+| **Tool Governance** | `AllowedTools` config | Restrict agent capabilities |
+| **Danger WAF** | Regex interception | Block `rm -rf /`, `mkfs`, `dd` |
+| **Process Isolation** | PGID-based termination | No orphaned processes |
+| **Filesystem Jail** | WorkDir lockdown | Confined to project root |
+
+## Contributing
+
+We welcome contributions! Please ensure CI passes:
+
+```bash
+make lint    # Run golangci-lint
+make test    # Run unit tests
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+Released under the [MIT License](LICENSE).
 
 ---
 
-## 📄 License
-
-hotplex is released under the [MIT License](LICENSE).
-
 <div align="center">
-  <i>Built with ❤️ for the AI Engineering community.</i>
+  <i>Built for the AI Engineering community.</i>
 </div>
