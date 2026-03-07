@@ -299,6 +299,10 @@ DOCKER_TAG      ?= latest
 DOCKER_REGISTRY ?= ghcr.io/hrygo
 HOST_UID        ?= $(shell id -u)
 
+# Dynamically discover services from docker-compose.yml
+# Uses explicit list as fallback if docker compose command fails
+COMPOSE_SERVICES ?= $(shell docker compose config --services 2>/dev/null || echo "hotplex hotplex-secondary")
+
 docker-build: ## @docker Build image using docker-compose
 	@printf "${CYAN}🐳 Building Docker images via Compose...${NC}\n"
 	HOST_UID=$(HOST_UID) VERSION=$(VERSION) docker compose build
@@ -308,30 +312,45 @@ docker-build-tag: docker-build ## @docker Build and tag image
 
 docker-sync: ## @docker Sync project configs to ~/.hotplex
 	@printf "${CYAN}🔄 Synchronizing project configs...${NC}\n"
+	@# Verify source configs exist
+	@if [ ! -d "chatapps/configs" ]; then \
+		printf "${RED}❌ Directory chatapps/configs/ not found${NC}\n"; \
+		exit 1; \
+	fi
+	@if [ -z "$$(ls -A chatapps/configs/*.yaml 2>/dev/null)" ]; then \
+		printf "${RED}❌ No YAML configs found in chatapps/configs/${NC}\n"; \
+		exit 1; \
+	fi
 	@mkdir -p $(HOME)/.hotplex/configs
-	@# Remove stale configs before sync (prevents deleted files from lingering)
-	@rm -f $(HOME)/.hotplex/configs/*.yaml 2>/dev/null || true
-	@# Sync chatapps configs (YAML files)
-	@cp chatapps/configs/*.yaml $(HOME)/.hotplex/configs/ 2>/dev/null || true
-	@printf "${GREEN}✅ Configuration sync complete.${NC}\n"
+	@rm -f $(HOME)/.hotplex/configs/*.yaml 2>/dev/null
+	@cp chatapps/configs/*.yaml $(HOME)/.hotplex/configs/
+	@COUNT=$$(ls -1 $(HOME)/.hotplex/configs/*.yaml 2>/dev/null | wc -l | tr -d ' ') && \
+		printf "${GREEN}✅ Synced $${COUNT} config(s) to ~/.hotplex/configs/${NC}\n"
 
 docker-run: docker-up ## @docker Run daemon using docker-compose (alias for docker-up)
 
 docker-up: docker-sync ## @docker Start with docker-compose
 	@printf "${PURPLE}🚀 Starting HotPlex via Docker Compose...${NC}\n"
+	@# Verify COMPOSE_SERVICES is not empty
+	@if [ -z "$(COMPOSE_SERVICES)" ]; then \
+		printf "${RED}❌ No services found. Is Docker running?${NC}\n"; \
+		exit 1; \
+	fi
 	@printf "${DIM}Note: Ensure your proxy software has 'Allow LAN' enabled.${NC}\n"
-	HOST_UID=$(HOST_UID) docker compose up -d
+	HOST_UID=$(HOST_UID) docker compose up -d $(COMPOSE_SERVICES)
 	@printf "${GREEN}✅ HotPlex is running!${NC}\n"
 	@printf "${DIM}Use 'make docker-logs' to see logs or 'make docker-down' to stop.${NC}\n"
 
-docker-down: ## @docker Stop and remove docker-compose containers
+docker-down: ## @docker Stop and remove docker-compose containers (graceful)
 	@printf "${YELLOW}🛑 Stopping HotPlex containers...${NC}\n"
-	docker compose down
+	docker compose down --timeout 30
 	@printf "${GREEN}✅ Done.${NC}\n"
 
-docker-restart: docker-sync ## @docker Sync configs → restart containers
+docker-restart: docker-sync ## @docker Sync configs → restart containers (graceful)
 	@printf "${YELLOW}🔄 Restarting HotPlex containers...${NC}\n"
-	docker compose down && docker compose up -d
+	docker compose down --timeout 30
+	@sleep 2
+	HOST_UID=$(HOST_UID) docker compose up -d $(COMPOSE_SERVICES)
 	@printf "${GREEN}✅ Restart complete.${NC}\n"
 
 docker-logs: ## @docker Tail docker-compose logs
@@ -339,9 +358,33 @@ docker-logs: ## @docker Tail docker-compose logs
 
 docker-check-net: ## @docker Verify container network connectivity
 	@printf "${CYAN}🔍 Checking container network...${NC}\n"
-	@docker exec hotplex nc -zv host.docker.internal 15721 || printf "${RED}✗ LLM Proxy (15721) Unreachable${NC}\n"
-	@docker exec hotplex nc -zv host.docker.internal 7897 || printf "${RED}✗ General Proxy (7897) Unreachable${NC}\n"
-	@printf "${GREEN}✅ Connectivity check finished.${NC}\n"
+	@for svc in $(COMPOSE_SERVICES); do \
+		printf "  ${DIM}$$svc:${NC}\n"; \
+		docker exec $$svc nc -zv host.docker.internal 15721 2>&1 | grep -q succeeded && \
+			printf "    ${GREEN}✓${NC} LLM Proxy (15721)\n" || \
+			printf "    ${RED}✗${NC} LLM Proxy (15721)\n"; \
+		docker exec $$svc nc -zv host.docker.internal 7897 2>&1 | grep -q succeeded && \
+			printf "    ${GREEN}✓${NC} General Proxy (7897)\n" || \
+			printf "    ${RED}✗${NC} General Proxy (7897)\n"; \
+	done
+
+docker-health: ## @docker Check health status of all containers
+	@printf "${CYAN}🏥 Container Health Status:${NC}\n"
+	@for svc in $(COMPOSE_SERVICES); do \
+		status=$$(docker inspect --format='{{.State.Health.Status}}' $$svc 2>/dev/null || echo "not_found"); \
+		case $$status in \
+			healthy) printf "  ${GREEN}✅ $$svc${NC}: $$status\n" ;; \
+			starting) printf "  ${YELLOW}⏳ $$svc${NC}: $$status\n" ;; \
+			*) printf "  ${RED}❌ $$svc${NC}: $$status\n" ;; \
+		esac; \
+	done
+
+docker-upgrade: ## @docker Pull latest image and restart
+	@printf "${CYAN}⬆️  Upgrading HotPlex...${NC}\n"
+	docker pull ghcr.io/hrygo/hotplex:latest
+	@$(MAKE) docker-restart
+	@sleep 10
+	@$(MAKE) docker-health
 
 docker-push:
 	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
@@ -361,4 +404,4 @@ docker-buildx:
 docker-clean:
 	docker rmi $(DOCKER_IMAGE):$(DOCKER_TAG) || true
 
-.PHONY: all help build build-all fmt vet test test-unit test-race test-integration test-all lint tidy clean install-hooks run stop restart docs svg2png service-install service-uninstall service-start service-stop service-restart service-status service-logs service-enable service-disable config-info docker-build docker-build-tag docker-run docker-sync docker-up docker-down docker-logs docker-push docker-push-tag docker-buildx docker-clean
+.PHONY: all help build build-all fmt vet test test-unit test-race test-integration test-all lint tidy clean install-hooks run stop restart docs svg2png service-install service-uninstall service-start service-stop service-restart service-status service-logs service-enable service-disable config-info docker-build docker-build-tag docker-run docker-sync docker-up docker-down docker-restart docker-logs docker-check-net docker-health docker-upgrade docker-push docker-push-tag docker-buildx docker-clean

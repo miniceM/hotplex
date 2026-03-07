@@ -2,9 +2,9 @@
 # HotPlex Docker Compose Deployment
 # ==============================================================================
 # Quick Start:
-#   docker compose up -d hotplex hotplex-secondary  # 启动所有 Bot
-#   docker compose logs -f hotplex                  # 查看主 Bot 日志
-#   docker compose down                             # 停止所有 Bot
+#   make docker-up                                    # 启动所有 Bot
+#   docker compose logs -f hotplex                    # 查看主 Bot 日志
+#   make docker-down                                  # 停止所有 Bot
 #
 # Architecture:
 #   ┌─────────────────────────────────────────────────────────────────────────┐
@@ -27,7 +27,45 @@
 #   Docker Compose substitutes ${VAR} at compose-time from shell/default .env,
 #   NOT from each service's env_file. Using shared variables would cause all
 #   bots to mount the same directory, leading to session conflicts.
+#
+# Note on YAML Anchors:
+#   YAML anchors work for maps (<<: *anchor) but NOT for lists (volumes).
+#   We use anchors for shared config maps, but volumes are defined per-service.
 # ==============================================================================
+
+# ------------------------------------------------------------------------------
+# YAML Anchors for DRY Configuration (maps only - lists can't be merged)
+# ------------------------------------------------------------------------------
+x-hotplex-common: &hotplex-common
+  image: ghcr.io/hrygo/hotplex:latest
+  environment: &common-env
+    HOST_UID: ${HOST_UID:-1000}
+    ANTHROPIC_BASE_URL: http://host.docker.internal:15721
+    HTTP_PROXY: http://host.docker.internal:7897
+    HTTPS_PROXY: http://host.docker.internal:7897
+    NO_PROXY: localhost,127.0.0.1,host.docker.internal
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  healthcheck: &common-healthcheck
+    test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8080/health" ]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 60s
+  logging: &common-logging
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+  deploy: &common-deploy
+    resources:
+      limits:
+        memory: 2G
+        cpus: '2.0'
+      reservations:
+        memory: 512M
+        cpus: '0.25'
+  restart: unless-stopped
 
 # ------------------------------------------------------------------------------
 # Named Volumes
@@ -41,57 +79,14 @@ volumes:
 
 services:
   # ============================================================================
-  # Base Service Template (not started directly, used for inheritance)
-  # ============================================================================
-  # Usage: Each bot extends this template and adds bot-specific volumes.
-  # Note: Docker Compose merges lists (volumes) from extends + local.
-  # ============================================================================
-  base:
-    image: ghcr.io/hrygo/hotplex:latest
-    environment:
-      HOST_UID: ${HOST_UID:-1000}
-      ANTHROPIC_BASE_URL: http://host.docker.internal:15721
-      HTTP_PROXY: http://host.docker.internal:7897
-      HTTPS_PROXY: http://host.docker.internal:7897
-      NO_PROXY: localhost,127.0.0.1,host.docker.internal
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    healthcheck:
-      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8080/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: '2.0'
-    restart: unless-stopped
-    volumes:
-      # Shared volumes (inherited by all bots)
-      - ${HOME}/.hotplex:/home/hotplex/.hotplex:rw
-      - ${HOME}/.claude:/home/hotplex/.claude:rw
-      - ${HOME}/.claude/settings.json:/home/hotplex/.claude/settings.json:ro
-      - hotplex-go-mod:/home/hotplex/go/pkg/mod:rw
-      - hotplex-go-build:/home/hotplex/.cache/go-build:rw
-    profiles:
-      - do-not-start
-
-  # ============================================================================
   # Bot 01: Primary Bot
   # ============================================================================
   # Role: Production bot with Claude Opus
   # Config: .env
-  # Port:  18080 → 8080
+  # Port:  127.0.0.1:18080 → 8080 (localhost only for security)
   # ============================================================================
   hotplex:
-    extends:
-      service: base
+    <<: *hotplex-common
     build:
       context: .
       args:
@@ -99,33 +94,47 @@ services:
         VERSION: ${VERSION:-dev}
     container_name: hotplex
     ports:
-      - "18080:8080"
+      - "127.0.0.1:18080:8080"
     env_file:
       - .env
     volumes:
-      # Bot-specific volumes (appended to inherited shared volumes)
-      # Projects workspace - MUST be unique per bot
+      # Shared volumes
+      - ${HOME}/.hotplex:/home/hotplex/.hotplex:rw
+      - ${HOME}/.claude:/home/hotplex/.claude:rw
+      - ${HOME}/.claude/settings.json:/home/hotplex/.claude/settings.json:ro
+      - hotplex-go-mod:/home/hotplex/go/pkg/mod:rw
+      - hotplex-go-build:/home/hotplex/.cache/go-build:rw
+      # Bot-specific volumes (MUST be unique per bot)
       - ${HOME}/.slack/BOT_U0AHRCL1KCM:/home/hotplex/projects:rw
-      # Git identity: HotPlexBot01 (generate: ./scripts/setup_gitconfig.sh)
       - ${HOME}/.gitconfig-hotplex:/home/hotplex/.gitconfig:ro
+    labels:
+      - "hotplex.bot.role=primary"
+      - "hotplex.bot.config=.env"
 
   # ============================================================================
   # Bot 02: Secondary Bot
   # ============================================================================
   # Role: Test/Staging bot with Claude Sonnet
   # Config: .env.secondary
-  # Port:  18081 → 8080
+  # Port:  127.0.0.1:18081 → 8080 (localhost only for security)
   # ============================================================================
   hotplex-secondary:
-    extends:
-      service: base
+    <<: *hotplex-common
     container_name: hotplex-secondary
     ports:
-      - "18081:8080"
+      - "127.0.0.1:18081:8080"
     env_file:
       - .env.secondary
     volumes:
-      # Bot-specific volumes (appended to inherited shared volumes)
+      # Shared volumes
+      - ${HOME}/.hotplex:/home/hotplex/.hotplex:rw
+      - ${HOME}/.claude:/home/hotplex/.claude:rw
+      - ${HOME}/.claude/settings.json:/home/hotplex/.claude/settings.json:ro
+      - hotplex-go-mod:/home/hotplex/go/pkg/mod:rw
+      - hotplex-go-build:/home/hotplex/.cache/go-build:rw
+      # Bot-specific volumes (MUST be unique per bot)
       - ${HOME}/.slack/BOT_U0AJVRH4YF6:/home/hotplex/projects:rw
-      # Git identity: HotPlexBot02 (generate: ./scripts/setup_gitconfig.sh)
       - ${HOME}/.gitconfig-hotplex-secondary:/home/hotplex/.gitconfig:ro
+    labels:
+      - "hotplex.bot.role=secondary"
+      - "hotplex.bot.config=.env.secondary"
