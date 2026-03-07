@@ -75,6 +75,10 @@ server_addr: :8080
 # -----------------------------------------------------------------------------
 # AI Identity & Behavior
 # -----------------------------------------------------------------------------
+# ⚠️  CUSTOMIZE THIS PROMPT for your project! ⚠️
+# The system_prompt below is an EXAMPLE for the HotPlex project.
+# Define your own AI identity, workflow, and conventions.
+# -----------------------------------------------------------------------------
 system_prompt: |
   You are HotPlex, an expert software engineer in a Slack conversation.
 
