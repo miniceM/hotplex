@@ -157,9 +157,21 @@ func (s *SQLiteStorage) storeMessage(ctx context.Context, msg *ChatAppMessage) e
 	msg.CreatedAt = now
 	msg.UpdatedAt = now
 	metadataJSON, _ := json.Marshal(msg.Metadata)
-	query := `INSERT OR REPLACE INTO messages (id, chat_session_id, chat_platform, chat_user_id, content, message_type, metadata, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	_, err := s.db.ExecContext(ctx, query, msg.ID, msg.ChatSessionID, msg.ChatPlatform, msg.ChatUserID, msg.Content, string(msg.MessageType), string(metadataJSON), msg.CreatedAt, msg.UpdatedAt)
+
+	query := `INSERT OR REPLACE INTO messages (
+		id, chat_session_id, chat_platform, chat_user_id, chat_bot_user_id, chat_channel_id, chat_thread_id,
+		engine_session_id, engine_namespace, provider_session_id, provider_type,
+		message_type, from_user_id, from_user_name, to_user_id, content, metadata, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+
+	_, err := s.db.ExecContext(ctx, query,
+		msg.ID, msg.ChatSessionID, msg.ChatPlatform, msg.ChatUserID,
+		msg.ChatBotUserID, msg.ChatChannelID, msg.ChatThreadID,
+		msg.EngineSessionID.String(), msg.EngineNamespace,
+		msg.ProviderSessionID, msg.ProviderType,
+		string(msg.MessageType), msg.FromUserID, msg.FromUserName, msg.ToUserID,
+		msg.Content, string(metadataJSON), msg.CreatedAt, msg.UpdatedAt,
+	)
 	return err
 }
 
