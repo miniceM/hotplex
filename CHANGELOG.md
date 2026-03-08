@@ -1,5 +1,19 @@
 # CHANGELOG.md
 
+## [v0.23.4] - 2026-03-09
+
+### 🔧 Patch Release
+
+This release fixes thread ownership behavior when multiple bots are in the same channel.
+
+### Fixed
+
+#### 🤖 Thread Ownership
+- **Release Ownership on Other Bot Mention** - Bot now releases thread ownership when another bot is @mentioned in the same thread
+- **Multi-Bot Coexistence** - Enables seamless handoff between multiple bots in shared channels
+
+---
+
 ## [v0.23.3] - 2026-03-08
 
 ### 🔧 Patch Release
