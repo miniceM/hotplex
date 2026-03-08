@@ -1,3 +1,28 @@
+// Package brain provides intelligent orchestration capabilities for HotPlex.
+// This file (config.go) defines configuration structures loaded from environment variables.
+//
+// # Configuration Hierarchy
+//
+//	Config (root)
+//	├── Model (LLM backend settings)
+//	├── Cache (response caching)
+//	├── Retry (retry policy)
+//	├── Metrics (observability)
+//	├── Cost (cost tracking)
+//	├── RateLimit (throttling)
+//	├── Router (model routing)
+//	├── CircuitBreaker (fault tolerance)
+//	├── Failover (provider failover)
+//	├── Budget (budget limits)
+//	├── Priority (request prioritization)
+//	├── IntentRouter (message classification)
+//	├── Memory (context compression)
+//	└── Guard (safety guardrails)
+//
+// # Environment Variables
+//
+// All config is loaded from environment variables with prefix HOTPLEX_BRAIN_.
+// See LoadConfigFromEnv() for the full list of variables.
 package brain
 
 import (
@@ -11,105 +36,165 @@ import (
 
 // === Model Configuration ===
 
+// ModelConfig configures the LLM backend for Brain operations.
 type ModelConfig struct {
-	Provider string
-	Model    string
-	Endpoint string
-	TimeoutS int
+	Provider string // LLM provider: "openai", "anthropic", "google"
+	Model    string // Model name: "gpt-4o-mini", "claude-3-haiku", etc.
+	Endpoint string // Custom API endpoint (optional, for self-hosted)
+	TimeoutS int    // Request timeout in seconds
 }
 
 // === Cache Configuration ===
 
+// CacheConfig configures response caching for repeated queries.
 type CacheConfig struct {
-	Enabled bool
-	Size    int
+	Enabled bool // Enable response caching
+	Size    int  // Maximum cache entries
 }
 
 // === Retry Configuration ===
 
+// RetryConfig configures retry behavior for transient failures.
 type RetryConfig struct {
-	Enabled     bool
-	MaxAttempts int
-	MinWaitMs   int
-	MaxWaitMs   int
+	Enabled     bool // Enable retry mechanism
+	MaxAttempts int  // Maximum retry attempts
+	MinWaitMs   int  // Minimum wait between retries (milliseconds)
+	MaxWaitMs   int  // Maximum wait between retries (milliseconds)
 }
 
 // === Metrics Configuration ===
 
+// MetricsConfig configures observability and metrics export.
 type MetricsConfig struct {
-	Enabled        bool
-	ServiceName    string
-	Endpoint       string
-	ExportInterval time.Duration
+	Enabled        bool          // Enable metrics collection
+	ServiceName    string        // Service name for metrics identification
+	Endpoint       string        // Metrics export endpoint (e.g., OTLP collector)
+	ExportInterval time.Duration // Interval for periodic metric export
 }
 
 // === Cost Configuration ===
 
+// CostConfig configures cost tracking for LLM API calls.
 type CostConfig struct {
-	Enabled      bool
-	EnableBudget bool
+	Enabled      bool // Enable cost tracking
+	EnableBudget bool // Enable budget enforcement
 }
 
 // === Rate Limit Configuration ===
 
+// RateLimitConfig configures request rate limiting.
 type RateLimitConfig struct {
-	Enabled      bool
-	RPS          float64
-	Burst        int
-	QueueSize    int
-	QueueTimeout time.Duration
-	PerModel     bool
+	Enabled      bool          // Enable rate limiting
+	RPS          float64       // Requests per second limit
+	Burst        int           // Burst capacity (token bucket)
+	QueueSize    int           // Queue size for waiting requests
+	QueueTimeout time.Duration // Max wait time in queue
+	PerModel     bool          // Apply limit per-model instead of global
 }
 
 // === Router Configuration ===
 
+// RouterConfig configures intelligent model routing.
 type RouterConfig struct {
-	Enabled      bool
-	DefaultStage string
-	Models       []llm.ModelConfig
+	Enabled      bool             // Enable model routing
+	DefaultStage string           // Default routing strategy: "cost_priority", "latency_priority"
+	Models       []llm.ModelConfig // Available models with cost/latency info
 }
 
 // === Circuit Breaker Configuration ===
 
+// CircuitBreakerConfig configures circuit breaker for fault tolerance.
 type CircuitBreakerConfig struct {
-	Enabled     bool
-	MaxFailures int
-	Timeout     time.Duration
-	Interval    time.Duration
+	Enabled     bool          // Enable circuit breaker
+	MaxFailures int           // Failures before opening circuit
+	Timeout     time.Duration // Time before attempting to close circuit
+	Interval    time.Duration // Interval for resetting failure count
 }
 
 // === Failover Configuration ===
 
+// FailoverConfig configures provider failover behavior.
 type FailoverConfig struct {
-	Enabled        bool
-	Providers      []llm.ProviderConfig
-	EnableAuto     bool
-	EnableFailback bool
-	Cooldown       time.Duration
+	Enabled        bool               // Enable failover
+	Providers      []llm.ProviderConfig // Backup providers
+	EnableAuto     bool               // Enable automatic failover
+	EnableFailback bool               // Enable automatic failback when primary recovers
+	Cooldown       time.Duration      // Cooldown period before failback
 }
 
 // === Budget Configuration ===
 
+// BudgetConfig configures budget limits for LLM costs.
 type BudgetConfig struct {
-	Enabled         bool
-	Period          string
-	Limit           float64
-	EnableHardLimit bool
-	AlertThresholds []float64
+	Enabled         bool      // Enable budget tracking
+	Period          string    // Budget period: "daily", "weekly", "monthly"
+	Limit           float64   // Budget limit in USD
+	EnableHardLimit bool      // Block requests when budget exceeded
+	AlertThresholds []float64 // Alert at these percentages (e.g., [0.5, 0.8, 0.9])
 }
 
 // === Priority Configuration ===
 
+// PriorityConfig configures request prioritization.
 type PriorityConfig struct {
-	Enabled               bool
-	MaxQueueSize          int
-	EnableLowPriorityDrop bool
-	HighPriorityReserve   int
+	Enabled               bool // Enable priority queuing
+	MaxQueueSize          int  // Maximum queued requests
+	EnableLowPriorityDrop bool // Drop low-priority requests when queue full
+	HighPriorityReserve   int  // Reserved slots for high-priority requests
+}
+
+// === Intent Router Configuration ===
+
+// IntentRouterFeatureConfig configures intent routing features.
+type IntentRouterFeatureConfig struct {
+	Enabled             bool    `json:"enabled"`              // Enable intent routing
+	ConfidenceThreshold float64 `json:"confidence_threshold"` // Minimum confidence for classification
+	CacheSize           int     `json:"cache_size"`           // Cache size for classification results
+}
+
+// === Memory Compression Configuration ===
+
+// MemoryCompressionConfig configures context compression.
+type MemoryCompressionConfig struct {
+	Enabled          bool    // Enable context compression
+	TokenThreshold   int     // Trigger compression at this token count
+	TargetTokenCount int     // Target tokens after compression
+	PreserveTurns    int     // Recent turns to preserve during compression
+	MaxSummaryTokens int     // Maximum tokens for summary
+	CompressionRatio float64 // Target compression ratio (0.0-1.0)
+	SessionTTL       string  // Session time-to-live (e.g., "24h")
+}
+
+// === Safety Guard Configuration ===
+
+// SafetyGuardFeatureConfig configures safety guardrails.
+type SafetyGuardFeatureConfig struct {
+	Enabled            bool          // Enable safety guard
+	InputGuardEnabled  bool          // Enable input validation
+	OutputGuardEnabled bool          // Enable output sanitization
+	Chat2ConfigEnabled bool          // Enable natural language config changes (security risk)
+	MaxInputLength     int           // Maximum input length
+	ScanDepth          int           // Depth for nested context scanning
+	Sensitivity        string        // Detection sensitivity: "low", "medium", "high"
+	AdminUsers         []string      // User IDs with admin privileges
+	AdminChannels      []string      // Channel IDs with admin privileges
+	ResponseTimeout    time.Duration // Timeout for Brain API calls
+	RateLimitRPS       float64       // Requests per second per user (0 = disabled)
+	RateLimitBurst     int           // Burst capacity per user
 }
 
 // === Main Config ===
 
 // Config holds the configuration for the Global Brain.
+// It aggregates all sub-configurations for the Brain system.
+//
+// # Auto-Enable Logic
+//
+// Config.Enabled is automatically set based on APIKey presence:
+//   - HOTPLEX_BRAIN_API_KEY present → Enabled = true
+//   - HOTPLEX_BRAIN_API_KEY absent → Enabled = false
+//
+// This allows graceful degradation when Brain is not configured.
 type Config struct {
 	// Enabled is automatically determined based on APIKey presence.
 	Enabled bool
@@ -135,6 +220,12 @@ type Config struct {
 	Budget BudgetConfig
 	// Priority is the priority configuration.
 	Priority PriorityConfig
+	// IntentRouter is the intent router feature configuration.
+	IntentRouter IntentRouterFeatureConfig
+	// Memory is the memory compression feature configuration.
+	Memory MemoryCompressionConfig
+	// Guard is the safety guard feature configuration.
+	Guard SafetyGuardFeatureConfig
 }
 
 // LoadConfigFromEnv loads the brain configuration from environment variables.
@@ -205,6 +296,34 @@ func LoadConfigFromEnv() Config {
 			EnableLowPriorityDrop: getBoolEnv("HOTPLEX_BRAIN_PRIORITY_ENABLE_LOW_PRIORITY_DROP", true),
 			HighPriorityReserve:   getIntEnv("HOTPLEX_BRAIN_PRIORITY_HIGH_PRIORITY_RESERVE", 100),
 		},
+		IntentRouter: IntentRouterFeatureConfig{
+			Enabled:             getBoolEnv("HOTPLEX_BRAIN_INTENT_ROUTER_ENABLED", true),
+			ConfidenceThreshold: getFloatEnv("HOTPLEX_BRAIN_INTENT_ROUTER_CONFIDENCE", 0.7),
+			CacheSize:           getIntEnv("HOTPLEX_BRAIN_INTENT_ROUTER_CACHE_SIZE", 1000),
+		},
+		Memory: MemoryCompressionConfig{
+			Enabled:          getBoolEnv("HOTPLEX_BRAIN_MEMORY_ENABLED", true),
+			TokenThreshold:   getIntEnv("HOTPLEX_BRAIN_MEMORY_TOKEN_THRESHOLD", 8000),
+			TargetTokenCount: getIntEnv("HOTPLEX_BRAIN_MEMORY_TARGET_TOKENS", 2000),
+			PreserveTurns:    getIntEnv("HOTPLEX_BRAIN_MEMORY_PRESERVE_TURNS", 5),
+			MaxSummaryTokens: getIntEnv("HOTPLEX_BRAIN_MEMORY_MAX_SUMMARY_TOKENS", 500),
+			CompressionRatio: getFloatEnv("HOTPLEX_BRAIN_MEMORY_COMPRESSION_RATIO", 0.25),
+			SessionTTL:       getEnv("HOTPLEX_BRAIN_MEMORY_SESSION_TTL", "24h"),
+		},
+		Guard: SafetyGuardFeatureConfig{
+			Enabled:            getBoolEnv("HOTPLEX_BRAIN_GUARD_ENABLED", true),
+			InputGuardEnabled:  getBoolEnv("HOTPLEX_BRAIN_GUARD_INPUT_ENABLED", true),
+			OutputGuardEnabled: getBoolEnv("HOTPLEX_BRAIN_GUARD_OUTPUT_ENABLED", true),
+			Chat2ConfigEnabled: getBoolEnv("HOTPLEX_BRAIN_CHAT2CONFIG_ENABLED", false),
+			MaxInputLength:     getIntEnv("HOTPLEX_BRAIN_GUARD_MAX_INPUT_LENGTH", 100000),
+			ScanDepth:          getIntEnv("HOTPLEX_BRAIN_GUARD_SCAN_DEPTH", 3),
+			Sensitivity:        getEnv("HOTPLEX_BRAIN_GUARD_SENSITIVITY", "medium"),
+			AdminUsers:         parseStringList(getEnv("HOTPLEX_BRAIN_ADMIN_USERS", "")),
+			AdminChannels:      parseStringList(getEnv("HOTPLEX_BRAIN_ADMIN_CHANNELS", "")),
+			ResponseTimeout:    getDurationEnv("HOTPLEX_BRAIN_GUARD_RESPONSE_TIMEOUT", 10*time.Second),
+			RateLimitRPS:       getFloatEnv("HOTPLEX_BRAIN_GUARD_RATE_LIMIT_RPS", 10.0),
+			RateLimitBurst:     getIntEnv("HOTPLEX_BRAIN_GUARD_RATE_LIMIT_BURST", 20),
+		},
 	}
 }
 
@@ -241,6 +360,22 @@ func parseRouterModels(s string) []llm.ModelConfig {
 	}
 
 	return models
+}
+
+func parseStringList(s string) []string {
+	if s == "" {
+		return nil
+	}
+
+	var result []string
+	parts := strings.Split(s, ",")
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			result = append(result, part)
+		}
+	}
+	return result
 }
 
 // Helper functions for loading config from environment variables
