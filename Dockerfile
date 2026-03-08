@@ -98,7 +98,10 @@ RUN ARCH=$(uname -m) && \
     chmod +x /usr/local/bin/websocat
 
 # Install Claude Code via official script (recommended)
-RUN curl -fsSL https://claude.ai/install.sh | bash
+# Script installs to ~/.local/bin, move to system path
+RUN curl -fsSL https://claude.ai/install.sh | bash && \
+    mv /root/.local/bin/claude /usr/local/bin/claude && \
+    chmod +x /usr/local/bin/claude
 
 # ============================================
 # Stage 5: Final Image
