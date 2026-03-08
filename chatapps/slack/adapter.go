@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/hrygo/hotplex/chatapps/base"
 	"github.com/hrygo/hotplex/chatapps/command"
@@ -75,10 +76,10 @@ func NewAdapter(config *Config, logger *slog.Logger, opts ...base.AdapterOption)
 		logger.Error("Invalid Slack config", "error", err)
 		// Return minimal but valid adapter to prevent nil pointer panics
 		return &Adapter{
-			Adapter:   base.NewAdapter("slack", base.Config{}, logger),
-			config:    config,
-			webhook:   base.NewWebhookRunner(logger),
-			sender:    base.NewSenderWithMutex(),
+			Adapter:     base.NewAdapter("slack", base.Config{}, logger),
+			config:      config,
+			webhook:     base.NewWebhookRunner(logger),
+			sender:      base.NewSenderWithMutex(),
 			rateLimiter: NewSlashCommandRateLimiterWithConfig(config.SlashCommandRateLimit, rateBurst),
 			cmdRegistry: command.NewRegistry(),
 		}
@@ -93,7 +94,7 @@ func NewAdapter(config *Config, logger *slog.Logger, opts ...base.AdapterOption)
 		sender:           base.NewSenderWithMutex(),
 		webhook:          base.NewWebhookRunner(logger),
 		rateLimiter:      NewSlashCommandRateLimiterWithConfig(config.SlashCommandRateLimit, rateBurst),
-		messageBuilder:   NewMessageBuilder(), // Converts base.ChatMessage to Slack blocks using official SDK
+		messageBuilder:   NewMessageBuilder(config), // Converts base.ChatMessage to Slack blocks using official SDK
 		cmdRegistry:      command.NewRegistry(),
 	}
 
@@ -137,13 +138,18 @@ func NewAdapter(config *Config, logger *slog.Logger, opts ...base.AdapterOption)
 		a.sender.SetSender(a.defaultSender)
 	}
 
-	// Initialize message storage plugin if enabled
-	if config.Storage != nil && config.Storage.Enabled {
+	// Initialize message storage plugin if enabled (default: false)
+	storageEnabled := config.Storage != nil && BoolValue(config.Storage.Enabled, false)
+	if storageEnabled {
 		if err := a.initStoragePlugin(config.Storage, logger); err != nil {
 			logger.Error("Failed to initialize storage plugin, continuing without persistence",
-				"error", err, "type", config.Storage.Type)
+				"error", err)
 		} else {
-			logger.Info("Message storage plugin initialized", "type", config.Storage.Type)
+			storageType := "memory"
+			if config.Storage != nil {
+				storageType = config.Storage.Type
+			}
+			logger.Info("Message storage plugin initialized", "type", storageType)
 		}
 	}
 
@@ -151,9 +157,13 @@ func NewAdapter(config *Config, logger *slog.Logger, opts ...base.AdapterOption)
 	if config.IsThreadOwnershipEnabled() {
 		a.ownershipTracker = NewThreadOwnershipTracker(config.GetThreadOwnershipTTL(), logger)
 		a.ownershipCleanupCtx, a.ownershipCleanupCancel = context.WithCancel(context.Background())
+		persist := false
+		if config.ThreadOwnership != nil && config.ThreadOwnership.Persist != nil {
+			persist = *config.ThreadOwnership.Persist
+		}
 		logger.Info("Thread ownership tracker initialized",
 			"ttl", config.GetThreadOwnershipTTL(),
-			"persist", config.ThreadOwnership.Persist)
+			"persist", persist)
 	}
 
 	return a
@@ -175,16 +185,21 @@ func (a *Adapter) initStoragePlugin(cfg *StorageConfig, logger *slog.Logger) err
 	registry := storage.GlobalRegistry()
 	pluginConfig := storage.PluginConfig{}
 
+	storageType := "memory"
+	if cfg != nil && cfg.Type != "" {
+		storageType = cfg.Type
+	}
+
 	// Set storage-specific config
-	switch cfg.Type {
+	switch storageType {
 	case "sqlite":
-		if cfg.SQLitePath != "" {
+		if cfg != nil && cfg.SQLitePath != "" {
 			pluginConfig["path"] = cfg.SQLitePath
 		} else {
 			pluginConfig["path"] = "data/slack_messages.db"
 		}
 	case "postgresql":
-		if cfg.PostgreSQLURL != "" {
+		if cfg != nil && cfg.PostgreSQLURL != "" {
 			pluginConfig["url"] = cfg.PostgreSQLURL
 		} else {
 			return fmt.Errorf("postgresql storage requires PostgreSQLURL config")
@@ -192,16 +207,16 @@ func (a *Adapter) initStoragePlugin(cfg *StorageConfig, logger *slog.Logger) err
 	case "memory":
 		// No additional config needed
 	default:
-		logger.Warn("Unknown storage type, falling back to memory", "type", cfg.Type)
-		cfg.Type = "memory"
+		logger.Warn("Unknown storage type, falling back to memory", "type", storageType)
+		storageType = "memory"
 	}
 
-	store, err := registry.Get(cfg.Type, pluginConfig)
+	store, err := registry.Get(storageType, pluginConfig)
 	if err != nil {
 		return err
 	}
 	if store == nil {
-		logger.Warn("Storage plugin not found, using memory", "type", cfg.Type)
+		logger.Warn("Storage plugin not found, using memory", "type", storageType)
 		store, _ = registry.Get("memory", nil)
 	}
 
@@ -214,11 +229,18 @@ func (a *Adapter) initStoragePlugin(cfg *StorageConfig, logger *slog.Logger) err
 	sessionMgr := session.NewSessionManager("hotplex")
 
 	// Create message store plugin
+	var streamEnabled *bool
+	var streamTimeout time.Duration
+	if cfg != nil {
+		streamEnabled = cfg.StreamEnabled
+		streamTimeout = cfg.StreamTimeout
+	}
+
 	pluginCfg := base.MessageStorePluginConfig{
 		Store:          store,
 		SessionManager: sessionMgr,
-		StreamEnabled:  cfg.StreamEnabled,
-		StreamTimeout:  cfg.StreamTimeout,
+		StreamEnabled:  BoolValue(streamEnabled, false),
+		StreamTimeout:  streamTimeout,
 		Logger:         logger,
 	}
 
@@ -497,7 +519,7 @@ func (a *Adapter) DeleteMessage(ctx context.Context, channelID, messageTS string
 
 // UpdateMessage implements base.MessageOperations interface
 func (a *Adapter) UpdateMessage(ctx context.Context, channelID, messageTS string, msg *base.ChatMessage) error {
-	builder := NewMessageBuilder()
+	builder := NewMessageBuilder(a.config)
 	blocks := builder.Build(msg)
 	return a.UpdateMessageSDK(ctx, channelID, messageTS, blocks, msg.Content)
 }
@@ -532,7 +554,7 @@ func (a *Adapter) ShouldRespondToMessage(channelType, channelID, threadTS, text,
 	threadID := threadTS
 	if threadID == "" {
 		// Main channel message - will create new thread
-		return a.shouldRespondToMainChannel(channelType, channelID, text, userID)
+		return a.shouldRespondToMainChannel(channelType, text, userID)
 	}
 
 	// Thread message
@@ -540,7 +562,7 @@ func (a *Adapter) ShouldRespondToMessage(channelType, channelID, threadTS, text,
 }
 
 // shouldRespondToMainChannel handles decision for main channel messages (no thread).
-func (a *Adapter) shouldRespondToMainChannel(channelType, channelID, text, userID string) (bool, string) {
+func (a *Adapter) shouldRespondToMainChannel(channelType, text, userID string) (bool, string) {
 	// DM handling
 	if channelType == "dm" || channelType == "im" {
 		if a.config.CanRespond(userID) {
@@ -632,3 +654,11 @@ func (a *Adapter) ClaimThreadOwnership(channelID, threadTS string) {
 	a.ownershipTracker.Claim(threadKey)
 }
 
+// stripBotMention removes bot mention from text
+func (a *Adapter) stripBotMention(text string) string {
+	if a.config.BotUserID == "" {
+		return text
+	}
+	mention := fmt.Sprintf("<@%s>", a.config.BotUserID)
+	return strings.TrimSpace(strings.ReplaceAll(text, mention, ""))
+}

@@ -277,6 +277,292 @@ system_prompt: |
 
 > 💡 **Best Practice**: Refer to the example in `chatapps/configs/slack.yaml` and modify the identity, workflow, and output specifications according to your project's actual needs.
 
+### 📝 Full Advanced Configuration Example (slack.yaml)
+
+Below is the complete `slack.yaml` configuration file example, containing all available options. Advanced users can refer to this template for fine-grained customization:
+
+```yaml
+# =============================================================================
+# HotPlex Slack Adapter Configuration
+# =============================================================================
+# This file defines the behavior, security, and integration settings for the
+# Slack platform adapter.
+#
+# Detailed Setup Guide: docs/chatapps/chatapps-slack.md
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 1. PLATFORM & CONNECTION [Essential]
+# -----------------------------------------------------------------------------
+
+# [Required] Platform identifier
+platform: slack
+
+# [Optional] Connection mode
+# - "socket": (Default/Recommended) Standard Socket Mode for local/firewalled envs.
+# - "http"  : HTTP Webhook mode for cloud-native production deployments.
+mode: socket
+
+# [Optional] HTTP Server address
+# Only used when mode is "http" or for health check endpoints.
+server_addr: :8080
+
+# -----------------------------------------------------------------------------
+# 2. AI IDENTITY & BEHAVIOR
+# -----------------------------------------------------------------------------
+
+# ⚠️ [ACTION REQUIRED]
+# [Recommended] The Core System Identity
+# Customize this prompt to define your AI's specialized engineer persona.
+# This defines the AI's skills, workflow, and safety rules.
+system_prompt: |
+  You are HotPlex, an expert software engineer in a Slack conversation.
+
+  ## Environment
+  - Running under HotPlex engine (stdin/stdout)
+  - Headless mode - cannot prompt for user input
+
+  ## Slack Context
+  - Replies go to thread automatically
+  - Keep answers concise - user expects quick responses
+
+  ## Git Workflow (Fork + Feature Branch)
+
+  ### Repository Structure
+  ```
+  upstream (hrygo/hotplex)     ← Source of truth
+      │
+      └── origin (your fork)   ← Your remote
+              │
+              └── local        ← Your machine
+  ```
+
+  ### Before Starting New Work
+  1. **Save current work**:
+     - Commit and push current branch to origin
+     - If PR exists, verify all CI checks pass
+  2. **Sync main branches** (main is SYNC-ONLY, no development):
+     ```bash
+     git checkout main
+     git fetch upstream
+     git reset --hard upstream/main    # Force sync with upstream
+     git push origin main --force      # Update fork's main
+     ```
+
+  ### Feature Development Flow
+  1. **Create Issue** (if not exists):
+     ```bash
+     gh issue create -t "[type] description" -b "body"
+     ```
+     Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`
+
+  2. **Create Feature Branch**:
+     ```bash
+     git checkout -b <type>/<issue-id>-short-desc
+     # Example: feat/123-add-user-auth
+     ```
+
+  3. **Commit (Atomic & Frequent)**:
+     ```bash
+     git commit -m "<type>(scope): description (Refs #ID)"
+     # Example: feat(auth): add OAuth login (Refs #123)
+     ```
+     - One commit per independent logic unit
+     - Use `wip:` prefix for checkpoints
+
+  4. **Create Pull Request**:
+     ```bash
+     git push origin <branch>
+     gh pr create --fill
+     ```
+     - Body must include: `Resolves #ID` or `Refs #ID`
+     - PR targets `upstream/main`, NOT your origin/main
+
+  ### Safety Rules
+  - **FORBIDDEN**: `checkout .`, `reset --hard`, `clean -fd` (lose uncommitted work)
+  - **REQUIRED**: `git status` before branch switching
+  - **SYNC-ONLY**: main branch - no commits, no development
+  - **PROTECTED**: upstream/main is the target - PR only
+
+  ## Output
+  - Be concise - short messages preferred
+  - Use bullet lists over paragraphs
+  - Use code blocks for code snippets
+  - Avoid tables - use lists instead
+
+# [Optional] Specialized Task Instructions
+# These are appended to every interaction to maintain task quality.
+task_instructions: |
+  1. Understand before acting
+  2. Avoid operations requiring user input
+  3. Summarize tool output - don't dump raw data
+  4. Write detailed content to docs/ directory
+
+# -----------------------------------------------------------------------------
+# 3. AI PROVIDER & ENGINE SETTINGS
+# -----------------------------------------------------------------------------
+
+# AI Backend Configuration
+provider:
+  # AI backend type:
+  # - claude-code: Anthropic's Claude Code CLI (Default)
+  # - opencode: OpenCode (supports multiple LLM backends via its own config)
+  type: claude-code
+
+  # Global settings (applied to all providers)
+  enabled: true
+  default_model: sonnet            # Model choice (e.g. sonnet, haiku, opus)
+  
+  # Permission Strategy
+  # - bypassPermissions: Fully autonomous (Recommended for Docker/Sandbox)
+  # - acceptEdits: Prompt for edits
+  # - default: Default CLI behavior
+  default_permission_mode: bypass-permissions 
+  dangerously_skip_permissions: true
+
+  # Tool filtering (Provider-level override)
+  # allowed_tools: ["Bash", "Edit"]
+
+# Engine Execution Parameters
+engine:
+  # ⚠️ [ACTION REQUIRED]
+  # Your local working directory where the AI will perform tasks.
+  # Ensure this path exists on your machine.
+  work_dir: ~/projects/hotplex
+  
+  # Performance & Safety
+  timeout: 30m                     # Max time for single AI task
+  idle_timeout: 1h                 # Time before agent teardown
+
+  # Tool filtering (Engine-level whitelist/blacklist)
+  # allowed_tools: ["Bash", "Edit"]
+  # disallowed_tools: ["Bash"]
+
+# -----------------------------------------------------------------------------
+# 4. SECURITY & ACCESS CONTROL
+# -----------------------------------------------------------------------------
+
+security:
+  # Verify Slack request signatures (mandatory for HTTP mode)
+  verify_signature: true
+
+  # [Optional] Bot Ownership & Access Policy
+  # See Part 1.0 of docs/design/bot-behavior-spec.md for details.
+  owner:
+    # ⚠️ [ACTION REQUIRED]
+    # Your Slack User ID (e.g., U12345678).
+    # To find it: Profile -> More (...) -> Copy member ID.
+    primary: "U0AHCF4DPK2"
+
+    # [Optional] List of trusted User IDs who can also command the bot
+    trusted: []
+
+    # Access Control Policy:
+    # - "owner_only": Only the 'primary' owner can interact with the bot.
+    # - "trusted"   : Both 'primary' owner and 'trusted' users can interact.
+    # - "public"    : Anyone in the workspace can interact with the bot.
+    policy: trusted
+
+  # User & Channel Permissions
+  permission:
+    # DM Policy: How the bot behaves in Direct Messages
+    # - "allow"  : Respond to all DMs
+    # - "pairing": Only respond if explicitly paired
+    # - "block"  : Total DM blackout
+    dm_policy: allow
+
+    # Group Policy: How the bot behaves in Channels/Groups
+    # - "allow"   : Passive mode. Respond to ALL messages (potential noise).
+    # - "mention" : Solo mode. Only responds when @this_bot is mentioned.
+    #               Ignores messages intended for other bots.
+    # - "multibot": (Recommended) Team mode. Intelligent multi-bot coordination.
+    #               - Responds if @this_bot is mentioned.
+    #               - SILENT and ignores messages mentioning OTHER bots (avoids cross-talk).
+    #               - Triggers broadcast_response if NO bot is tagged.
+    # - "block"   : Blackout mode. Completely silent in group channels.
+    group_policy: multibot
+
+    # ⚠️ [ACTION REQUIRED]
+    # Bot's own Slack User ID (e.g., U12345678).
+    # Essential for @mention detection. Recommend using environment variable.
+    bot_user_id: ${HOTPLEX_SLACK_BOT_USER_ID}
+
+    # [Optional] Thread Ownership Tracking
+    # Advanced: Recommended for multi-bot rooms to prevent conflicting responses.
+    thread_ownership:
+      enabled: true               # Set to true to enable thread-level state
+      ttl: 24h                    # Ownership expiration (default: 24h)
+      persist: true               # Keep state across restarts
+
+    # [Optional] Multi-bot Broadcast Message
+    # Response sent when group_policy is "multibot" but no bot is tagged.
+    # Set to "" to stay silent when no bot is tagged (Multi-bot silence).
+    broadcast_response: ""
+
+
+    # User Filtering (Whitelist/Blacklist)
+    # Applied BEFORE Owner Policy checks.
+    allowed_users: []      # Example: ["U12345", "U67890"]
+    blocked_users: []
+
+    # API Security: Rate Limiting (reqs/sec per user)
+    slash_command_rate_limit: 10.0
+
+# -----------------------------------------------------------------------------
+# 5. FEATURE TOGGLES
+# -----------------------------------------------------------------------------
+
+features:
+  # UI/UX Experience settings
+  chunking:
+    enabled: true                  # Split messages > 4000 chars
+    max_chars: 4000
+  
+  threading:
+    enabled: true                  # Always reply in threads
+
+  rate_limit:
+    enabled: true                  # Auto-retry on Slack API 429
+    max_attempts: 3
+    base_delay_ms: 500
+    max_delay_ms: 5000
+
+  markdown:
+    enabled: true                  # Standard MD to Slack mrkdwn conversion
+
+# -----------------------------------------------------------------------------
+# 6. SESSION & STORAGE
+# -----------------------------------------------------------------------------
+
+# Internal Session Lifecycle [Optional]
+session:
+  timeout: 1h                      # Inactivity before cleanup
+  cleanup_interval: 5m              # Periodic scan interval
+
+# Message Storage (Persistent History) [Optional]
+# Enables conversation retrieval and long-term memory.
+message_store:
+  enabled: true
+  type: sqlite                    # sqlite | postgres | memory
+  
+  # Database configuration
+  sqlite:
+    path: ~/.hotplex/slack_messages.db
+    max_size_mb: 512
+    
+  # postgres:
+  #   dsn: postgres://user:pass@localhost:5432/hotplex
+  #   max_connections: 10
+
+  # History management
+  strategy: default                # default | verbose | minimal
+  streaming:
+    enabled: true                  # Buffer streaming chunks
+    timeout: 5m                    # Wait time for stream completion
+    storage_policy: complete_only  # complete_only | all_chunks
+```
+
+
 ---
 
 ## 🚑 Troubleshooting

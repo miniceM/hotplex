@@ -9,8 +9,8 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -51,8 +51,8 @@ type Session struct {
 	callback   Callback
 	logger     *slog.Logger
 	logFile    *os.File // Session-specific log file for stderr persistence
-	ext        any  // Extension payload for consumer packages
-	IsResuming bool // True if session was resumed from persistent marker
+	ext        any      // Extension payload for consumer packages
+	IsResuming bool     // True if session was resumed from persistent marker
 }
 
 // IsAlive checks if the process is still running.
@@ -316,7 +316,9 @@ func (s *Session) ReadStderr() {
 		}
 		// Write to session log file for persistence
 		if s.logFile != nil {
-			fmt.Fprintf(s.logFile, "[%s] %s\n", time.Now().Format(time.RFC3339), line)
+			if _, err := fmt.Fprintf(s.logFile, "[%s] %s\n", time.Now().Format(time.RFC3339), line); err != nil && s.logger != nil {
+				s.logger.Warn("Failed to write to session log", "error", err)
+			}
 		}
 	}
 
@@ -337,7 +339,6 @@ func NewTestSession(id string, status SessionStatus) *Session {
 		statusChange:      make(chan SessionStatus, 10),
 	}
 }
-
 
 // OpenLogFile opens a log file for this session in SessionLogDir.
 func (s *Session) OpenLogFile() error {

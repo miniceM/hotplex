@@ -178,7 +178,6 @@ services:
       - ${HOME}/.hotplex:/home/hotplex/.hotplex:rw # Message DB, configs
       - ${HOME}/.claude:/home/hotplex/.claude:rw # Session state
       - ${HOME}/.claude/settings.json:/home/hotplex/.claude/settings.json:ro
-      - ${HOME}/.claude.json:/home/hotplex/.claude.json:rw
       - hotplex-go-mod:/home/hotplex/go/pkg/mod:rw # Go module cache
       - hotplex-go-build:/home/hotplex/.cache/go-build:rw # Go build cache
       # Bot-specific volumes (MUST be unique per bot - no variables!)

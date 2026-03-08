@@ -364,9 +364,9 @@ func TestThreadOwnershipConfig(t *testing.T) {
 		BotToken:      "xoxb-123-456-abc",
 		SigningSecret: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		ThreadOwnership: &ThreadOwnershipConfig{
-			Enabled: true,
+			Enabled: PtrBool(true),
 			TTL:     12 * time.Hour,
-			Persist: true,
+			Persist: PtrBool(true),
 		},
 	}
 	if !config.IsThreadOwnershipEnabled() {
@@ -381,8 +381,8 @@ func TestThreadOwnershipConfig(t *testing.T) {
 		BotToken:      "xoxb-123-456-abc",
 		SigningSecret: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 	}
-	if noConfig.IsThreadOwnershipEnabled() {
-		t.Error("Thread ownership should be disabled by default")
+	if !noConfig.IsThreadOwnershipEnabled() {
+		t.Error("Thread ownership should be enabled by default")
 	}
 	if noConfig.GetThreadOwnershipTTL() != 24*time.Hour {
 		t.Errorf("Default TTL should be 24h, got %v", noConfig.GetThreadOwnershipTTL())

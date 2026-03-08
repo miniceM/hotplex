@@ -12,6 +12,47 @@ import (
 	"time"
 )
 
+// PtrBool returns a pointer to the given bool value.
+func PtrBool(b bool) *bool {
+	return &b
+}
+
+// BoolValue returns the value of a bool pointer if not nil, otherwise returns defaultVal.
+func BoolValue(pb *bool, defaultVal bool) bool {
+	if pb == nil {
+		return defaultVal
+	}
+	return *pb
+}
+
+// FeaturesConfig contains feature toggles for UI/UX experience.
+type FeaturesConfig struct {
+	Chunking  ChunkingConfig
+	Threading ThreadingConfig
+	RateLimit RateLimitConfig
+	Markdown  MarkdownConfig
+}
+
+type ChunkingConfig struct {
+	Enabled  *bool
+	MaxChars int
+}
+
+type ThreadingConfig struct {
+	Enabled *bool
+}
+
+type RateLimitConfig struct {
+	Enabled     *bool
+	MaxAttempts int
+	BaseDelayMs int
+	MaxDelayMs  int
+}
+
+type MarkdownConfig struct {
+	Enabled *bool
+}
+
 // pairingState holds runtime pairing state with thread-safe access
 type pairingState struct {
 	mu    sync.RWMutex
@@ -45,11 +86,11 @@ type OwnerConfig struct {
 // ThreadOwnershipConfig defines thread ownership tracking behavior.
 type ThreadOwnershipConfig struct {
 	// Enabled enables thread ownership tracking
-	Enabled bool `yaml:"enabled"`
+	Enabled *bool `yaml:"enabled"`
 	// TTL is the time-to-live for thread ownership (default: 24h)
 	TTL time.Duration `yaml:"ttl"`
-	// Persist enables persistence of ownership state
-	Persist bool `yaml:"persist"`
+	// Persist enables persistence of ownership state (default: false)
+	Persist *bool `yaml:"persist"`
 }
 
 type Config struct {
@@ -88,6 +129,13 @@ type Config struct {
 	// ThreadOwnership defines thread ownership tracking (Phase 1: Bot Behavior Spec)
 	ThreadOwnership *ThreadOwnershipConfig `yaml:"thread_ownership"`
 
+	// VerifySignature enables Slack request signature verification.
+	// Default: true
+	VerifySignature *bool
+
+	// Features contains UI/UX feature toggles
+	Features FeaturesConfig `yaml:"features"`
+
 	// SlashCommandRateLimit: Maximum requests per second per user for slash commands
 	// Default: 10.0 requests/second
 	SlashCommandRateLimit float64
@@ -120,7 +168,7 @@ type Config struct {
 //	}
 type StorageConfig struct {
 	// Enabled enables message storage
-	Enabled bool
+	Enabled *bool
 	// Type: "memory" (default), "sqlite", "postgresql"
 	Type string
 	// SQLitePath: Path to SQLite database file (only for type="sqlite")
@@ -129,7 +177,7 @@ type StorageConfig struct {
 	// Format: "postgres://user:pass@host:port/dbname"
 	PostgreSQLURL string
 	// StreamEnabled enables streaming message buffering
-	StreamEnabled bool
+	StreamEnabled *bool
 	// StreamTimeout is the timeout for streaming buffer (default 5min)
 	StreamTimeout time.Duration
 }
@@ -412,7 +460,8 @@ func (c *Config) GetThreadOwnershipTTL() time.Duration {
 // IsThreadOwnershipEnabled returns true if thread ownership tracking is enabled.
 func (c *Config) IsThreadOwnershipEnabled() bool {
 	if c.ThreadOwnership == nil {
-		return false
+		return true // Default to true if missing from config
 	}
-	return c.ThreadOwnership.Enabled
+	// Explicitly handle Enabled pointer
+	return BoolValue(c.ThreadOwnership.Enabled, true)
 }

@@ -30,6 +30,7 @@ type NativeStreamingWriter struct {
 	ctx       context.Context
 	adapter   *Adapter
 	channelID string
+	userID    string
 	threadTS  string
 	messageTS string
 
@@ -65,12 +66,13 @@ type NativeStreamingWriter struct {
 func NewNativeStreamingWriter(
 	ctx context.Context,
 	adapter *Adapter,
-	channelID, threadTS string,
+	userID, channelID, threadTS string,
 	onComplete func(string),
 ) *NativeStreamingWriter {
 	w := &NativeStreamingWriter{
 		ctx:          ctx,
 		adapter:      adapter,
+		userID:       userID,
 		channelID:    channelID,
 		threadTS:     threadTS,
 		onComplete:   onComplete,

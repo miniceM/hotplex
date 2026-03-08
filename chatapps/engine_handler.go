@@ -838,6 +838,7 @@ func (c *StreamCallback) handleAnswer(data any) error {
 	if !c.streamWriterActive && c.streamWriter == nil {
 		channelID := ""
 		threadTS := ""
+		userID := ""
 		if c.metadata != nil {
 			if ch, ok := c.metadata["channel_id"].(string); ok {
 				channelID = ch
@@ -845,9 +846,12 @@ func (c *StreamCallback) handleAnswer(data any) error {
 			if ts, ok := c.metadata["thread_ts"].(string); ok {
 				threadTS = ts
 			}
+			if uid, ok := c.metadata["user_id"].(string); ok {
+				userID = uid
+			}
 		}
 		if channelID != "" {
-			c.streamWriter = c.adapters.NewStreamWriter(c.ctx, c.platform, channelID, threadTS)
+			c.streamWriter = c.adapters.NewStreamWriter(c.ctx, c.platform, userID, channelID, threadTS)
 			if c.streamWriter != nil {
 				c.streamWriterActive = true
 				c.logger.Debug("Native streaming initialized", "channel_id", channelID)

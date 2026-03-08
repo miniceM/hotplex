@@ -2,7 +2,6 @@ package slack
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -493,13 +492,4 @@ func (a *Adapter) handleSocketModeInteractive(evt socketmode.Event) {
 	default:
 		a.Logger().Debug("Unhandled interaction type", "type", callback.Type)
 	}
-}
-
-// stripBotMention removes bot mention from text
-func (a *Adapter) stripBotMention(text string) string {
-	if a.config.BotUserID == "" {
-		return text
-	}
-	mention := fmt.Sprintf("<@%s>", a.config.BotUserID)
-	return strings.TrimSpace(strings.ReplaceAll(text, mention, ""))
 }

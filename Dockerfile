@@ -108,10 +108,14 @@ FROM runtime-all AS final
 # Copy binary from builder (always fresh)
 COPY --from=builder /build/hotplexd /app/hotplexd
 
+# Copy and setup entrypoint script
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+
 # User setup
 ARG HOST_UID=1000
 RUN adduser -D -u ${HOST_UID} hotplex && \
     mkdir -p /home/hotplex/go/pkg/mod /home/hotplex/.cache/go-build && \
+    chmod +x /app/docker-entrypoint.sh && \
     chown -R hotplex:hotplex /home/hotplex /app
 
 # Set up Go environment for hotplex user
@@ -128,4 +132,5 @@ RUN go version && \
 USER hotplex
 
 EXPOSE 8080
-ENTRYPOINT ["/app/hotplexd"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+CMD ["/app/hotplexd"]
