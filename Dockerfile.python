@@ -1,19 +1,19 @@
 # ============================================
-# HotPlex Release Image (for GoReleaser)
+# HotPlex + Python Stack
 # ============================================
-# Base image with HotPlex + Go toolchain
-# This is the foundation for all stack-specific variants
+# Extends base HotPlex with Python productivity tools
+# Build: docker build -f Dockerfile.python -t hotplex:python .
 # ============================================
 
 FROM golang:1.25-alpine
 
 LABEL maintainer="HotPlex Team"
-LABEL description="HotPlex AI Agent with Go toolchain"
+LABEL description="HotPlex AI Agent with Go + Python stack"
 
 WORKDIR /app
 
 # ============================================
-# Core System Dependencies (All stacks need these)
+# Core System Dependencies
 # ============================================
 RUN apk add --no-cache \
     # Version control
@@ -28,7 +28,7 @@ RUN apk add --no-cache \
     bat \
     fzf \
     eza \
-    # Network debugging (essential for WebSocket Gateway)
+    # Network debugging
     curl \
     jq \
     wget \
@@ -37,26 +37,35 @@ RUN apk add --no-cache \
     # Node.js (for Claude Code)
     nodejs \
     npm \
-    # Code quality
-    golangci-lint \
     # Process management
     procps \
     htop \
     # Config processing
     yq \
-    # Script runtime
+    # Python
     python3 \
+    py3-pip \
+    py3-venv \
     # Editor
     vim \
     # Timezone support
     tzdata \
     # Archive tools
     zip \
+    # Build essentials (for Python packages)
+    gcc \
+    g++ \
+    musl-dev \
+    libffi-dev \
+    openssl-dev \
+    # Database
+    postgresql-dev \
+    sqlite-dev \
     # Runtime deps
     ca-certificates
 
 # ============================================
-# Go Toolchain (HotPlex native stack)
+# Go Toolchain (HotPlex native)
 # ============================================
 RUN go install github.com/air-verse/air@latest && \
     go install github.com/go-delve/delve/cmd/dlv@latest && \
@@ -66,12 +75,79 @@ RUN go install github.com/air-verse/air@latest && \
     go install github.com/securego/gosec/v2/cmd/gosec@latest && \
     go install golang.org/x/vuln/cmd/govulncheck@latest && \
     go install github.com/golang/mock/mockgen@latest && \
-    go install github.com/josharian/impl@latest && \
-    go install github.com/fatih/gomodifytags@latest && \
     go install gotest.tools/gotestsum@latest && \
-    go install github.com/segmentio/golines@latest && \
-    go install github.com/kisielk/errcheck@latest && \
     go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+# ============================================
+# Python Stack Extensions
+# ============================================
+RUN pip3 install --upgrade pip setuptools wheel --break-system-packages
+
+# Package managers
+RUN pip3 install --break-system-packages \
+    poetry \
+    uv \
+    pipx
+
+# Development tools
+RUN pip3 install --break-system-packages \
+    # Linting & Formatting
+    ruff \
+    black \
+    isort \
+    mypy \
+    pyright \
+    pylint \
+    flake8 \
+    # Testing
+    pytest \
+    pytest-cov \
+    pytest-asyncio \
+    pytest-mock \
+    hypothesis \
+    coverage \
+    # Debugging
+    ipython \
+    ipdb \
+    debugpy \
+    # Type stubs
+    types-requests \
+    types-python-dateutil \
+    types-PyYAML
+
+# Web frameworks
+RUN pip3 install --break-system-packages \
+    fastapi \
+    uvicorn \
+    gunicorn \
+    httpx \
+    requests \
+    aiohttp \
+    typer \
+    rich
+
+# Data & ML basics
+RUN pip3 install --break-system-packages \
+    pandas \
+    numpy \
+    polars
+
+# Jupyter
+RUN pip3 install --break-system-packages \
+    jupyter \
+    jupyterlab \
+    notebook
+
+# Documentation
+RUN pip3 install --break-system-packages \
+    mkdocs \
+    mkdocs-material
+
+# Security
+RUN pip3 install --break-system-packages \
+    bandit \
+    safety \
+    pip-audit
 
 # ============================================
 # WebSocket & Claude Code
@@ -96,22 +172,29 @@ RUN chmod +x /app/hotplexd
 # Verification
 # ============================================
 RUN go version && \
-    golangci-lint version && \
-    gh --version && \
+    python3 --version && \
+    poetry --version && \
+    ruff --version && \
+    pytest --version && \
     websocat --version && \
-    claude --version 2>/dev/null || claude-code --version || true
+    claude --version 2>/dev/null || true
 
 # ============================================
 # User Setup
 # ============================================
 ARG HOST_UID=1000
 RUN adduser -D -u ${HOST_UID} hotplex && \
-    mkdir -p /home/hotplex/go/pkg/mod /home/hotplex/.cache/go-build && \
+    mkdir -p /home/hotplex/go/pkg/mod \
+             /home/hotplex/.cache/go-build \
+             /home/hotplex/.cache \
+             /home/hotplex/.local && \
     chown -R hotplex:hotplex /home/hotplex
 
 ENV GOPATH=/home/hotplex/go
 ENV GOCACHE=/home/hotplex/.cache/go-build
-ENV PATH="${GOPATH}/bin:${PATH}"
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PATH="/home/hotplex/.local/bin:${GOPATH}/bin:${PATH}"
 
 USER hotplex
 

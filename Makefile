@@ -400,4 +400,57 @@ docker-buildx:
 docker-clean:
 	docker rmi $(DOCKER_IMAGE):$(DOCKER_TAG) || true
 
-.PHONY: all help build build-all fmt vet test test-unit test-race test-integration test-all lint tidy clean install-hooks run stop restart docs svg2png service-install service-uninstall service-start service-stop service-restart service-status service-logs service-enable service-disable config-info docker-build docker-build-cache docker-build-tag docker-run docker-sync docker-up docker-down docker-restart docker-logs docker-check-net docker-health docker-upgrade docker-push docker-push-tag docker-buildx docker-clean
+# =============================================================================
+# 🐳 STACK IMAGES (HotPlex + Tech Stack Extensions)
+# =============================================================================
+# All images include HotPlex core + Go toolchain + stack-specific tools
+
+STACK_TAG ?= latest
+
+stack-go: ## @docker Build HotPlex + Go (default, same as release)
+	@printf "${CYAN}🔨 Building HotPlex + Go stack...${NC}\n"
+	docker build -f Dockerfile.release --build-arg HOST_UID=$(HOST_UID) \
+		-t hotplex:go -t hotplex:go-1.26 .
+	@printf "${GREEN}✅ Built hotplex:go${NC}\n"
+
+stack-node: ## @docker Build HotPlex + Node.js/TypeScript stack
+	@printf "${CYAN}🔨 Building HotPlex + Node stack...${NC}\n"
+	docker build -f Dockerfile.node --build-arg HOST_UID=$(HOST_UID) \
+		-t hotplex:node -t hotplex:node-24 .
+	@printf "${GREEN}✅ Built hotplex:node${NC}\n"
+
+stack-python: ## @docker Build HotPlex + Python stack
+	@printf "${CYAN}🔨 Building HotPlex + Python stack...${NC}\n"
+	docker build -f Dockerfile.python --build-arg HOST_UID=$(HOST_UID) \
+		-t hotplex:python -t hotplex:python-3.14 .
+	@printf "${GREEN}✅ Built hotplex:python${NC}\n"
+
+stack-java: ## @docker Build HotPlex + Java/Kotlin stack
+	@printf "${CYAN}🔨 Building HotPlex + Java stack...${NC}\n"
+	docker build -f Dockerfile.java --build-arg HOST_UID=$(HOST_UID) \
+		-t hotplex:java -t hotplex:java-21 .
+	@printf "${GREEN}✅ Built hotplex:java${NC}\n"
+
+stack-rust: ## @docker Build HotPlex + Rust stack
+	@printf "${CYAN}🔨 Building HotPlex + Rust stack...${NC}\n"
+	docker build -f Dockerfile.rust --build-arg HOST_UID=$(HOST_UID) \
+		-t hotplex:rust -t hotplex:rust-1.94 .
+	@printf "${GREEN}✅ Built hotplex:rust${NC}\n"
+
+stack-full: ## @docker Build HotPlex + Full stack (all tech stacks)
+	@printf "${CYAN}🔨 Building HotPlex + Full stack...${NC}\n"
+	docker build -f Dockerfile.full --build-arg HOST_UID=$(HOST_UID) \
+		-t hotplex:full -t hotplex:$(STACK_TAG) .
+	@printf "${GREEN}✅ Built hotplex:full${NC}\n"
+
+stack-all: stack-go stack-node stack-python stack-java stack-rust stack-full ## @docker Build all stack images
+	@echo ""
+	@printf "${GREEN}🎉 All HotPlex stack images built!${NC}\n"
+	@docker images | grep hotplex
+
+stack-clean: ## @docker Remove all stack images
+	@printf "${YELLOW}🧹 Cleaning stack images...${NC}\n"
+	docker rmi -f hotplex:go hotplex:node hotplex:python hotplex:java hotplex:rust hotplex:full 2>/dev/null || true
+	@printf "${GREEN}✅ Cleaned${NC}\n"
+
+.PHONY: all help build build-all fmt vet test test-unit test-race test-integration test-all lint tidy clean install-hooks run stop restart docs svg2png service-install service-uninstall service-start service-stop service-restart service-status service-logs service-enable service-disable config-info docker-build docker-build-cache docker-build-tag docker-run docker-sync docker-up docker-down docker-restart docker-logs docker-check-net docker-health docker-upgrade docker-push docker-push-tag docker-buildx docker-clean stack-go stack-node stack-python stack-java stack-rust stack-full stack-all stack-clean
