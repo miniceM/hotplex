@@ -165,7 +165,8 @@ services:
   hotplex:
     <<: *hotplex-common
     build:
-      context: . # Build from local source code (remove to use remote image)
+      context: .
+      dockerfile: build/docker/Dockerfile
       args:
         HOST_UID: ${HOST_UID:-1000}
         VERSION: ${VERSION:-dev}
@@ -212,7 +213,6 @@ services:
       - ${HOME}/.hotplex:/home/hotplex/.hotplex:rw
       - ${HOME}/.claude:/home/hotplex/.claude:rw
       - ${HOME}/.claude/settings.json:/home/hotplex/.claude/settings.json:ro
-      - ${HOME}/.claude.json:/home/hotplex/.claude.json:rw
       - hotplex-go-mod:/home/hotplex/go/pkg/mod:rw
       - hotplex-go-build:/home/hotplex/.cache/go-build:rw
       # Bot-specific volumes (MUST be unique per bot - no variables!)
