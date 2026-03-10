@@ -2,6 +2,38 @@
 
 This package implements a high-performance, AI-native Slack adapter for the HotPlex engine. It provides seamless integration with Slack, supporting rich visual components through Block Kit, native streaming via Assistant Threads, and a refined "AI-is-Alive" perception system.
 
+## ⚙️ Required Environment Variables
+
+**Before using this adapter, you MUST configure the following environment variables in your `.env` file:**
+
+```bash
+# 1. Bot User ID - Your bot's user ID (REQUIRED)
+#    Used to identify the bot's own messages and prevent infinite loops
+#    Get it by: curl -X POST "https://slack.com/api/auth.test" \
+#                 -H "Authorization: Bearer xoxb-YOUR_BOT_TOKEN" | jq '.user_id'
+HOTPLEX_SLACK_BOT_USER_ID=UXXXXXXXXXX
+
+# 2. Primary Owner - Your Slack User ID (REQUIRED)
+#    Specifies the bot owner when owner_policy is set to "trusted"
+#    If not configured, ALL messages will be rejected (including DMs)
+#    Get it from: Slack Profile -> More -> Copy member ID
+HOTPLEX_SLACK_PRIMARY_OWNER=UXXXXXXXXXX
+```
+
+**Why are these IDs required?**
+
+- **HOTPLEX_SLACK_BOT_USER_ID**:
+  - Identifies messages sent by the bot itself
+  - Prevents infinite loops (bot responding to its own messages)
+  - Required for @mention detection in multibot mode
+
+- **HOTPLEX_SLACK_PRIMARY_OWNER**:
+  - Specifies the bot's administrator/owner
+  - When `owner_policy: trusted`, only configured users can use the bot
+  - If missing, all messages are rejected with "blocked by policy"
+
+**Without these two IDs, the bot will not respond to any messages!**
+
 ## 🏗️ Message Data Flow
 
 The following diagram illustrates how signals flow from the Engine through the integration layer to the Slack UI:
