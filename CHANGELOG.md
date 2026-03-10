@@ -1,5 +1,32 @@
 # CHANGELOG.md
 
+## [v0.24.0] - 2026-03-10
+
+### 🚀 Minor Release - System Prompt Injection & API Docs Expansion
+
+This release introduces native support for session-level system prompt injection across all access channels, provides updated client examples, and significantly enhances the official API documentation.
+
+### Added
+
+#### 🧠 System Prompt Injection
+- **OpenCode HTTP Support** - New `system_prompt` field in `POST /session/{id}/message` and `prompt_async` endpoints.
+- **WebSocket Native Support** - Explicit documentation and example usage of `system_prompt` in `execute` requests.
+- **Priority Logic** - Clarified that `instructions` (per-request) take precedence over `system_prompt` (per-session/task).
+
+#### 📚 Expanded API Documentation
+- **Event Lifecycle** - Documented missing events: `permission_request`, `plan_mode`, `exit_plan_mode`, and updated `session_stats`.
+- **Bilingual Docs** - Full updates to both `api.md` (English) and `api_zh.md` (Chinese).
+- **Client Examples** - Added system prompt injection patterns to:
+  - `_examples/node_claude_websocket/client.js`
+  - `_examples/node_claude_websocket/enterprise_client.js`
+  - `_examples/python_opencode_http/client.py`
+
+### Fixed
+
+- **Code Cleanup** - Removed unused `agent` and `model` parameters from server-side execution logic to resolve linting warnings and simplify the API.
+
+---
+
 ## [v0.23.4] - 2026-03-09
 
 ### 🔧 Patch Release
@@ -260,15 +287,15 @@ This release upgrades all GitHub Actions to latest versions and fixes CI/CD work
 ### Changed
 
 #### GitHub Actions Upgrade
-| Action | Before | After |
-|--------|--------|-------|
-| `goreleaser/goreleaser-action` | v6 | v7 |
-| `docker/build-push-action` | v6 | v7 |
-| `docker/metadata-action` | v5 | v6 |
-| `docker/setup-buildx-action` | v3 | v4 |
-| `docker/setup-qemu-action` | v3 | v4 |
-| `docker/login-action` | v3 | v4 |
-| `golangci/golangci-lint-action` | v7 | v9 |
+| Action                          | Before | After |
+| ------------------------------- | ------ | ----- |
+| `goreleaser/goreleaser-action`  | v6     | v7    |
+| `docker/build-push-action`      | v6     | v7    |
+| `docker/metadata-action`        | v5     | v6    |
+| `docker/setup-buildx-action`    | v3     | v4    |
+| `docker/setup-qemu-action`      | v3     | v4    |
+| `docker/login-action`           | v3     | v4    |
+| `golangci/golangci-lint-action` | v7     | v9    |
 
 ### Technical Notes
 
