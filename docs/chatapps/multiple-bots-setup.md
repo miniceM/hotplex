@@ -21,7 +21,7 @@ When running multiple bots in the same channel, use `group_policy: multibot` for
 
 ### Configuration
 
-In `chatapps/configs/slack.yaml`:
+In `configs/chatapps/slack.yaml`:
 
 ```yaml
 security:

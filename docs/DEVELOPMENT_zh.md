@@ -227,7 +227,7 @@ go mod tidy
 
 1. **命令行参数**（最高优先级）
 2. **环境变量**（`.env` 文件）
-3. **YAML 配置文件**（`chatapps/configs/*.yaml`）
+3. **YAML 配置文件**（`configs/chatapps/*.yaml`）
 4. **默认值**（最低优先级）
 
 ### 环境变量

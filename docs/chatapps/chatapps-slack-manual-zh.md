@@ -230,7 +230,7 @@ Slack 于 2026年2月17日 发布了官方 MCP Server，支持：
 
 ## ✅ 高级配置全解 (slack.yaml)
 
-在代码库的 `chatapps/configs/slack.yaml` 中可进行细粒度控制：
+在代码库的 `configs/chatapps/slack.yaml` 中可进行细粒度控制：
 
 ### 🔧 核心参数
 
@@ -251,7 +251,7 @@ Slack 于 2026年2月17日 发布了官方 MCP Server，支持：
 > ⚠️ **重要**：配置文件中的 `system_prompt` 是 **示例模板**，你需要根据自己的项目需求进行定制！
 
 ```yaml
-# chatapps/configs/slack.yaml
+# configs/chatapps/slack.yaml
 system_prompt: |
   You are [你的项目名称], an expert software engineer...
 
@@ -276,7 +276,7 @@ system_prompt: |
 | **Git Workflow** | 你的团队 Git 工作流程规范        |
 | **Output**       | 消息格式要求（简洁、代码块等）   |
 
-> 💡 **最佳实践**：参考 `chatapps/configs/slack.yaml` 中的示例，根据你的项目实际情况修改身份、工作流程和输出规范。
+> 💡 **最佳实践**：参考 `configs/chatapps/slack.yaml` 中的示例，根据你的项目实际情况修改身份、工作流程和输出规范。
 
 ### 📝 完整高级配置示例 (slack.yaml)
 

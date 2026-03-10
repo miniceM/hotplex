@@ -29,6 +29,7 @@ type ExecutionRequest struct {
 	SessionID    string
 	Prompt       string
 	Instructions string
+	SystemPrompt string // Session-level system prompt override
 	WorkDir      string
 	Timeout      time.Duration
 }
@@ -62,6 +63,7 @@ func (c *ExecutionController) Execute(ctx context.Context, req ExecutionRequest,
 		SessionID:        sessionID,
 		WorkDir:          workDir,
 		TaskInstructions: req.Instructions,
+		BaseSystemPrompt: req.SystemPrompt,
 	}
 
 	c.logger.Info("Controller: starting engine execution", "session_id", sessionID)

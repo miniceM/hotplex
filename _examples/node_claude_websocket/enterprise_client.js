@@ -448,8 +448,8 @@ class HotPlexClient {
       avgLatencyMs:
         this.metrics.requestsSuccess > 0
           ? Math.round(
-              this.metrics.totalLatencyMs / this.metrics.requestsSuccess,
-            )
+            this.metrics.totalLatencyMs / this.metrics.requestsSuccess,
+          )
           : 0,
     };
   }
@@ -491,9 +491,9 @@ async function main() {
     console.log("\n--- Executing Task ---\n");
 
     const result = await client.execute(
-      "List files in current directory and give a brief summary.",
+      "Explain the concept of 'Eventual Consistency' in distributed systems.",
       {
-        systemPrompt: "You are a helpful DevOps assistant. Be concise.",
+        systemPrompt: "You are a senior systems architect. Explain complex concepts in simple terms using analogies for a junior developer. Be detailed but clear.",
         onProgress: (event) => {
           switch (event.type) {
             case "thinking":

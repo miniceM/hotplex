@@ -122,4 +122,4 @@ HOTPLEX_SLACK_APP_TOKEN=xapp-paste_your_copied_secret_here
 >
 > When you're ready, consult the engineering bible 👉 [Slack App Core Configuration Manual](./chatapps-slack-manual.md).
 >
-> 🔔 **Reminder**: The `system_prompt` in `chatapps/configs/slack.yaml` is an example template. You MUST customize it for your project's identity, Git workflow, and output requirements!
+> 🔔 **Reminder**: The `system_prompt` in `configs/chatapps/slack.yaml` is an example template. You MUST customize it for your project's identity, Git workflow, and output requirements!

@@ -61,7 +61,7 @@ HotPlex supports running multiple bots with independent identities (tokens) with
 The engine searches for configuration files in the following priority order:
 1. `HOTPLEX_CHATAPPS_CONFIG_DIR` environment variable (Highest)
 2. `~/.hotplex/configs` (User-level synced configs)
-3. `./chatapps/configs` (Default path)
+3. `./configs/chatapps` (Default path)
 
 ### 2. Docker Compose Recommendation
 In your `docker-compose.yml`:

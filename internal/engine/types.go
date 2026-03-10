@@ -35,6 +35,7 @@ const (
 type SessionConfig struct {
 	WorkDir          string // Absolute path to the isolated sandbox directory
 	TaskInstructions string // Persistent instructions for the session
+	BaseSystemPrompt string // Session-level system prompt override (takes precedence over Engine-level)
 }
 
 // Callback handles streaming events from the CLI.

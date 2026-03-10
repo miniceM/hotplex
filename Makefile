@@ -117,11 +117,11 @@ config-info: ## @util Display current configuration status
 	else \
 		printf "         ${YELLOW}⚠${NC} Not found${NC}\n"; \
 	fi
-	@printf "     ${CYAN}c) Default (./chatapps/configs):${NC}\n"
-	@if [ -d "chatapps/configs" ]; then \
+	@printf "     ${CYAN}c) Default (./configs/chatapps):${NC}\n"
+	@if [ -d "configs/chatapps" ]; then \
 		printf "         ${GREEN}✓${NC} Active\n"; \
-		printf "         ${CYAN}Path:${NC} $$(pwd)/chatapps/configs/\n"; \
-		for f in chatapps/configs/*.yaml; do \
+		printf "         ${CYAN}Path:${NC} $$(pwd)/configs/chatapps/\n"; \
+		for f in configs/chatapps/*.yaml; do \
 			if [ -f "$$f" ]; then \
 				printf "            - $$(basename $$f)\n"; \
 			fi; \
@@ -323,17 +323,17 @@ docker-build-tag: docker-build ## @docker Build and tag image
 docker-sync: ## @docker Sync project configs to ~/.hotplex
 	@printf "${CYAN}🔄 Synchronizing project configs...${NC}\n"
 	@# Verify source configs exist
-	@if [ ! -d "chatapps/configs" ]; then \
-		printf "${RED}❌ Directory chatapps/configs/ not found${NC}\n"; \
+	@if [ ! -d "configs/chatapps" ]; then \
+		printf "${RED}❌ Directory configs/chatapps/ not found${NC}\n"; \
 		exit 1; \
 	fi
-	@if [ -z "$$(ls -A chatapps/configs/*.yaml 2>/dev/null)" ]; then \
-		printf "${RED}❌ No YAML configs found in chatapps/configs/${NC}\n"; \
+	@if [ -z "$$(ls -A configs/chatapps/*.yaml 2>/dev/null)" ]; then \
+		printf "${RED}❌ No YAML configs found in configs/chatapps/${NC}\n"; \
 		exit 1; \
 	fi
 	@mkdir -p $(HOME)/.hotplex/configs
 	@rm -f $(HOME)/.hotplex/configs/*.yaml 2>/dev/null
-	@cp chatapps/configs/*.yaml $(HOME)/.hotplex/configs/
+	@cp configs/chatapps/*.yaml $(HOME)/.hotplex/configs/
 	@COUNT=$$(ls -1 $(HOME)/.hotplex/configs/*.yaml 2>/dev/null | wc -l | tr -d ' ') && \
 		printf "${GREEN}✅ Synced $${COUNT} config(s) to ~/.hotplex/configs/${NC}\n"
 
@@ -342,7 +342,7 @@ docker-run: docker-up ## @docker Run daemon using docker-compose (alias for dock
 docker-up: docker-sync ## @docker Start all services via docker-compose
 	@printf "${PURPLE}🚀 Starting HotPlex via Docker Compose...${NC}\n"
 	@printf "${DIM}Note: Ensure your proxy software has 'Allow LAN' enabled.${NC}\n"
-	HOST_UID=$(HOST_UID) docker compose up -d
+	HOST_UID=$(HOST_UID) VERSION=$(VERSION) COMMIT=$(COMMIT) BUILD_TIME=$(BUILD_TIME) docker compose up -d
 	@printf "${GREEN}✅ HotPlex is running!${NC}\n"
 	@printf "${DIM}Use 'make docker-logs' to see logs or 'make docker-down' to stop.${NC}\n"
 
@@ -355,7 +355,7 @@ docker-restart: docker-sync ## @docker Sync configs → restart all containers (
 	@printf "${YELLOW}🔄 Restarting HotPlex containers...${NC}\n"
 	docker compose down --timeout 30
 	@sleep 2
-	HOST_UID=$(HOST_UID) docker compose up -d
+	HOST_UID=$(HOST_UID) VERSION=$(VERSION) COMMIT=$(COMMIT) BUILD_TIME=$(BUILD_TIME) docker compose up -d
 	@printf "${GREEN}✅ Restart complete.${NC}\n"
 
 docker-logs: ## @docker Tail docker-compose logs

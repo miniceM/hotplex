@@ -46,7 +46,7 @@ func Setup(ctx context.Context, logger *slog.Logger, configDir ...string) (http.
 	// 1. configDir parameter (--config flag, highest)
 	// 2. HOTPLEX_CHATAPPS_CONFIG_DIR environment variable
 	// 3. ~/.hotplex/configs (user config)
-	// 4. ./chatapps/configs (default)
+	// 4. ./configs/chatapps (default)
 	dir := ""
 
 	// 1. configDir parameter (highest priority)
@@ -77,7 +77,7 @@ func Setup(ctx context.Context, logger *slog.Logger, configDir ...string) (http.
 
 	// 4. Default config directory
 	if dir == "" {
-		dir = "chatapps/configs"
+		dir = "configs/chatapps"
 		// Check if default config directory exists
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
 			logger.Debug("Default config directory not found, skipping config loading", "path", dir)

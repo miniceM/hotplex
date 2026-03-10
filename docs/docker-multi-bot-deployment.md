@@ -181,7 +181,7 @@ hotplex/
 ├── docker-compose.yml     # Multi-bot orchestration
 ├── .env                   # Bot 01 environment
 ├── .env.secondary         # Bot 02 environment
-├── chatapps/configs/
+├── configs/chatapps/
 │   ├── slack.yaml         # Slack platform config
 │   └── ...
 └── scripts/

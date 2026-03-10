@@ -367,6 +367,12 @@ func (sm *SessionPool) startSession(ctx context.Context, sessionID string, cfg S
 }
 
 func (sm *SessionPool) buildCLIArgs(providerSessionID string, sessLog *slog.Logger, prompt string, cfg SessionConfig) []string {
+	// Determine system prompt: session-level override takes precedence over engine-level
+	baseSystemPrompt := cfg.BaseSystemPrompt
+	if baseSystemPrompt == "" {
+		baseSystemPrompt = sm.opts.BaseSystemPrompt
+	}
+
 	// Build ProviderSessionOptions
 	opts := &provider.ProviderSessionOptions{
 		WorkDir:                    cfg.WorkDir,
@@ -374,7 +380,7 @@ func (sm *SessionPool) buildCLIArgs(providerSessionID string, sessLog *slog.Logg
 		DangerouslySkipPermissions: sm.opts.DangerouslySkipPermissions,
 		AllowedTools:               sm.opts.AllowedTools,
 		DisallowedTools:            sm.opts.DisallowedTools,
-		BaseSystemPrompt:           sm.opts.BaseSystemPrompt,
+		BaseSystemPrompt:           baseSystemPrompt,
 		TaskInstructions:           cfg.TaskInstructions,
 		InitialPrompt:              prompt,
 		SessionID:                  providerSessionID,

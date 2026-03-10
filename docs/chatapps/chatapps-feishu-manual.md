@@ -151,7 +151,7 @@ curl -X POST https://your-domain.com/feishu/events \
 
 ## ✅ 高级配置全解 (feishu.yaml)
 
-在代码库的 `chatapps/configs/feishu.yaml` 中可进行细粒度控制：
+在代码库的 `configs/chatapps/feishu.yaml` 中可进行细粒度控制：
 
 | 参数                     | 可选值             | 说明                   |
 | ------------------------ | ------------------ | ---------------------- |

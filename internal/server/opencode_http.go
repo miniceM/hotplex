@@ -132,7 +132,8 @@ func (s *OpenCodeHTTPHandler) handlePrompt(w http.ResponseWriter, r *http.Reques
 	sessionID := vars["id"]
 
 	var req struct {
-		Prompt string `json:"prompt"`
+		Prompt       string `json:"prompt"`
+		SystemPrompt string `json:"system_prompt"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -143,7 +144,7 @@ func (s *OpenCodeHTTPHandler) handlePrompt(w http.ResponseWriter, r *http.Reques
 
 	// In OpenCode protocol, the response of this POST is usually empty or session info,
 	// while the actual content flows through the SSE channel.
-	go s.executeEngineTask(sessionID, req.Prompt, "", "")
+	go s.executeEngineTask(sessionID, req.Prompt, req.SystemPrompt)
 
 	w.WriteHeader(http.StatusAccepted)
 }
@@ -162,7 +163,7 @@ func (s *OpenCodeHTTPHandler) handleConfig(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (s *OpenCodeHTTPHandler) executeEngineTask(sessionID string, prompt string, agent string, model string) {
+func (s *OpenCodeHTTPHandler) executeEngineTask(sessionID string, prompt string, systemPrompt string) {
 	ctx := context.Background()
 
 	messageID := uuid.New().String()
@@ -184,10 +185,11 @@ func (s *OpenCodeHTTPHandler) executeEngineTask(sessionID string, prompt string,
 	}
 
 	execReq := ExecutionRequest{
-		SessionID: sessionID,
-		Prompt:    prompt,
-		WorkDir:   "/tmp/hotplex", // Default workspace
-		Timeout:   15 * time.Minute,
+		SessionID:    sessionID,
+		Prompt:       prompt,
+		SystemPrompt: systemPrompt,
+		WorkDir:      "/tmp/hotplex", // Default workspace
+		Timeout:      15 * time.Minute,
 	}
 
 	err := s.controller.Execute(ctx, execReq, cb)

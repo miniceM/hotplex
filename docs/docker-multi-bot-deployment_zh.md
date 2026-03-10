@@ -181,7 +181,7 @@ hotplex/
 ├── docker-compose.yml     # 多 Bot 编排配置
 ├── .env                   # Bot 01 环境变量
 ├── .env.secondary         # Bot 02 环境变量
-├── chatapps/configs/
+├── configs/chatapps/
 │   ├── slack.yaml         # Slack 平台配置
 │   └── ...
 └── scripts/

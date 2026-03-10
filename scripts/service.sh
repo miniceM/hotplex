@@ -214,8 +214,8 @@ macos_install() {
         printf "      ${YELLOW}Status:${NC} Please create this file\n"
     fi
     printf "    ${CYAN}ChatApps configs:${NC}\n"
-    printf "      ${CYAN}Source:${NC} $PROJECT_ROOT/chatapps/configs/\n"
-    for f in "$PROJECT_ROOT"/chatapps/configs/*.yaml; do
+    printf "      ${CYAN}Source:${NC} $PROJECT_ROOT/configs/chatapps/\n"
+    for f in "$PROJECT_ROOT"/configs/chatapps/*.yaml; do
         if [[ -f "$f" ]]; then
             printf "      - $(basename "$f")\n"
         fi
@@ -257,8 +257,8 @@ macos_start() {
     printf "    ${CYAN}Main config:${NC}\n"
     printf "      ${CYAN}Path:${NC} $ENV_FILE\n"
     printf "    ${CYAN}ChatApps configs:${NC}\n"
-    printf "      ${CYAN}Source:${NC} $PROJECT_ROOT/chatapps/configs/\n"
-    for f in "$PROJECT_ROOT"/chatapps/configs/*.yaml; do
+    printf "      ${CYAN}Source:${NC} $PROJECT_ROOT/configs/chatapps/\n"
+    for f in "$PROJECT_ROOT"/configs/chatapps/*.yaml; do
         if [[ -f "$f" ]]; then
             printf "      - $(basename "$f")\n"
         fi
@@ -423,8 +423,8 @@ linux_install() {
         printf "      ${YELLOW}Status:${NC} Please create this file\n"
     fi
     printf "    ${CYAN}ChatApps configs:${NC}\n"
-    printf "      ${CYAN}Source:${NC} $PROJECT_ROOT/chatapps/configs/\n"
-    for f in "$PROJECT_ROOT"/chatapps/configs/*.yaml; do
+    printf "      ${CYAN}Source:${NC} $PROJECT_ROOT/configs/chatapps/\n"
+    for f in "$PROJECT_ROOT"/configs/chatapps/*.yaml; do
         if [[ -f "$f" ]]; then
             printf "      - $(basename "$f")\n"
         fi
@@ -476,8 +476,8 @@ linux_start() {
     printf "    ${CYAN}Main config:${NC}\n"
     printf "      ${CYAN}Path:${NC} $ENV_FILE\n"
     printf "    ${CYAN}ChatApps configs:${NC}\n"
-    printf "      ${CYAN}Source:${NC} $PROJECT_ROOT/chatapps/configs/\n"
-    for f in "$PROJECT_ROOT"/chatapps/configs/*.yaml; do
+    printf "      ${CYAN}Source:${NC} $PROJECT_ROOT/configs/chatapps/\n"
+    for f in "$PROJECT_ROOT"/configs/chatapps/*.yaml; do
         if [[ -f "$f" ]]; then
             printf "      - $(basename "$f")\n"
         fi
@@ -507,8 +507,8 @@ linux_restart() {
     printf "    ${CYAN}Main config:${NC}\n"
     printf "      ${CYAN}Path:${NC} $ENV_FILE\n"
     printf "    ${CYAN}ChatApps configs:${NC}\n"
-    printf "      ${CYAN}Source:${NC} $PROJECT_ROOT/chatapps/configs/\n"
-    for f in "$PROJECT_ROOT"/chatapps/configs/*.yaml; do
+    printf "      ${CYAN}Source:${NC} $PROJECT_ROOT/configs/chatapps/\n"
+    for f in "$PROJECT_ROOT"/configs/chatapps/*.yaml; do
         if [[ -f "$f" ]]; then
             printf "      - $(basename "$f")\n"
         fi

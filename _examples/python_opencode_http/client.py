@@ -55,11 +55,16 @@ def create_session():
     print(f"✅ Session Created: {session_id}")
     return session_id
 
-def send_prompt(session_id, prompt):
-    """Sends a prompt to an active session."""
+def send_prompt(session_id, prompt, system_prompt=None):
+    """Sends a prompt to an active session, optionally with a system prompt."""
     print(f"\n👤 Sending prompt: {prompt}")
+    if system_prompt:
+        print(f"📖 System Prompt: {system_prompt}")
     url = f"{BASE_URL}/session/{session_id}/message"
-    resp = requests.post(url, json={"prompt": prompt})
+    payload = {"prompt": prompt}
+    if system_prompt:
+        payload["system_prompt"] = system_prompt
+    resp = requests.post(url, json=payload)
     resp.raise_for_status()
     print("📤 Prompt accepted")
 
@@ -72,9 +77,10 @@ if __name__ == "__main__":
         # 2. Setup session
         sid = create_session()
         
-        # 3. Interactive Loop or Single Prompt
+        # 3. Interactive Loop or Single Prompt with System Prompt injection
         prompt = "Write a basic hello world in Python"
-        send_prompt(sid, prompt)
+        system_prompt = "You are an expert Python developer. Use type hints and docstrings."
+        send_prompt(sid, prompt, system_prompt=system_prompt)
         
         # Keep main thread alive to watch results
         print("\n⏳ Waiting for AI results (Ctrl+C to exit)...")

@@ -16,13 +16,14 @@ import (
 
 // ClientRequest represents the JSON payload expected from the WebSocket client.
 type ClientRequest struct {
-	RequestID    int    `json:"request_id,omitempty"`   // Optional request ID for request-response correlation
-	Type         string `json:"type"`                   // "execute", "stop", "stats", "version"
-	SessionID    string `json:"session_id"`             // Provide session_id to hot-multiplex
-	Prompt       string `json:"prompt,omitempty"`       // The user input (for "execute")
-	Instructions string `json:"instructions,omitempty"` // Per-task instructions (for "execute")
-	WorkDir      string `json:"work_dir,omitempty"`     // Working directory for CLI (for "execute")
-	Reason       string `json:"reason,omitempty"`       // Reason for stopping (for "stop")
+	RequestID    int    `json:"request_id,omitempty"`    // Optional request ID for request-response correlation
+	Type         string `json:"type"`                    // "execute", "stop", "stats", "version"
+	SessionID    string `json:"session_id"`              // Provide session_id to hot-multiplex
+	Prompt       string `json:"prompt,omitempty"`        // The user input (for "execute")
+	Instructions string `json:"instructions,omitempty"`  // Per-task instructions (for "execute")
+	SystemPrompt string `json:"system_prompt,omitempty"` // Session-level system prompt override (for "execute")
+	WorkDir      string `json:"work_dir,omitempty"`      // Working directory for CLI (for "execute")
+	Reason       string `json:"reason,omitempty"`        // Reason for stopping (for "stop")
 }
 
 // ServerResponse represents the JSON payload sent to the WebSocket client.
@@ -181,6 +182,7 @@ func (h *HotPlexWSHandler) handleExecute(connCtx context.Context, cw *connWriter
 		SessionID:    sessionID,
 		Prompt:       req.Prompt,
 		Instructions: req.Instructions,
+		SystemPrompt: req.SystemPrompt,
 		WorkDir:      req.WorkDir,
 		Timeout:      10 * time.Minute,
 	}

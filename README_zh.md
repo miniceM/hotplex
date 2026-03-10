@@ -56,7 +56,7 @@ make build
 # 启动 Slack（或其他平台）
 export HOTPLEX_SLACK_BOT_TOKEN=xoxb-...
 export HOTPLEX_SLACK_APP_TOKEN=xapp-...
-./hotplexd --config chatapps/configs/slack.yaml
+./hotplexd --config configs/chatapps/slack.yaml
 ```
 
 ### 前置要求
@@ -175,7 +175,7 @@ engine.Execute(context.Background(), cfg, "重构这个函数", func(eventType s
 ### Slack 机器人
 
 ```yaml
-# chatapps/configs/slack.yaml
+# configs/chatapps/slack.yaml
 platform: slack
 mode: socket
 
@@ -203,10 +203,10 @@ assistant:
 export HOTPLEX_SLACK_BOT_USER_ID=B12345
 export HOTPLEX_SLACK_BOT_TOKEN=xoxb-...
 export HOTPLEX_SLACK_APP_TOKEN=xapp-...
-./hotplexd --config chatapps/configs/slack.yaml
+./hotplexd --config configs/chatapps/slack.yaml
 ```
 export HOTPLEX_SLACK_APP_TOKEN=xapp-...
-./hotplexd --config chatapps/configs/slack.yaml
+./hotplexd --config configs/chatapps/slack.yaml
 ```
 
 ### WebSocket API

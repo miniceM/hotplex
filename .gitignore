@@ -93,6 +93,9 @@ yarn-error.log*
 *.key
 cert.log
 
+# Server config may contain sensitive settings (api_key, etc.)
+/configs/server.yaml
+
 
 # ------------------------------------------------------------------------------
 # 🤖 Agent & Assistant States (AI 助手与工具状态)

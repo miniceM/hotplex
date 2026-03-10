@@ -22,7 +22,7 @@ HotPlex 使用分层配置系统，优先级从高到低：
 ```
 1. 命令行参数     (--config, --port 等)
 2. 环境变量       (HOTPLEX_*)
-3. YAML 配置文件  (chatapps/configs/*.yaml)
+3. YAML 配置文件  (configs/chatapps/*.yaml)
 4. 默认值         (内置默认值)
 ```
 
@@ -171,7 +171,7 @@ HotPlex 使用分层配置系统，优先级从高到低：
 ### 结构
 
 ```yaml
-# chatapps/configs/slack.yaml
+# configs/chatapps/slack.yaml
 
 # [必填] 平台标识
 platform: slack

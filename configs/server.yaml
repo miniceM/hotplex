@@ -1,0 +1,30 @@
+# HotPlex Server Configuration
+# This file provides YAML-based configuration for the hotplexd WebSocket server
+
+# Engine Configuration
+engine:
+  # Execution timeout for each task
+  timeout: 30m
+  # Idle timeout before session cleanup
+  idle_timeout: 1h
+  # Working directory for CLI operations
+  work_dir: /tmp/hotplex_sandbox
+  # Base system prompt injected at CLI startup for all sessions
+  # Can be overridden per-session via WebSocket request
+  system_prompt: ""
+
+# Server Configuration
+server:
+  # HTTP server port
+  port: 8080
+  # Log level: debug, info, warn, error
+  log_level: info
+  # Log format: text, json
+  log_format: text
+
+# Security Configuration
+security:
+  # API key for admin operations
+  api_key: ""
+  # Permission mode: strict, bypass-permissions
+  permission_mode: strict

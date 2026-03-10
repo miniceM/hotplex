@@ -221,6 +221,6 @@ curl -sL https://raw.githubusercontent.com/hrygo/hotplex/main/install.sh | bash
 
 ## 下一步
 
-- [配置 Slack Bot](./chatapps/configs/slack.yaml)
+- [配置 Slack Bot](./configs/chatapps/slack.yaml)
 - [查看 API 文档](./README_zh.md)
 - [贡献指南](./CONTRIBUTING.md)

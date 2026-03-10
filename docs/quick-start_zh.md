@@ -78,10 +78,10 @@ export HOTPLEX_SLACK_SIGNING_SECRET=xxx
 
 ```bash
 # 方式 1：使用 --config 参数指定配置目录（推荐，优先级最高）
-hotplexd --config chatapps/configs
+hotplexd --config configs/chatapps
 
 # 方式 2：使用环境变量
-export HOTPLEX_CHATAPPS_CONFIG_DIR=chatapps/configs
+export HOTPLEX_CHATAPPS_CONFIG_DIR=configs/chatapps
 export HOTPLEX_CHATAPPS_ENABLED=true
 hotplexd
 ```

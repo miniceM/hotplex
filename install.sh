@@ -746,10 +746,10 @@ wizard_slack_yaml() {
     local yaml_source=""
 
     # 查找源配置文件
-    if [[ -f "${INSTALL_DIR}/../chatapps/configs/slack.yaml" ]]; then
-        yaml_source="${INSTALL_DIR}/../chatapps/configs/slack.yaml"
-    elif [[ -f "/usr/local/share/hotplex/chatapps/configs/slack.yaml" ]]; then
-        yaml_source="/usr/local/share/hotplex/chatapps/configs/slack.yaml"
+    if [[ -f "${INSTALL_DIR}/../configs/chatapps/slack.yaml" ]]; then
+        yaml_source="${INSTALL_DIR}/../configs/chatapps/slack.yaml"
+    elif [[ -f "/usr/local/share/hotplex/configs/chatapps/slack.yaml" ]]; then
+        yaml_source="/usr/local/share/hotplex/configs/chatapps/slack.yaml"
     fi
 
     echo ""

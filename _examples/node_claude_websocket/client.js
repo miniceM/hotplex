@@ -13,11 +13,12 @@ const ws = new WebSocket(WS_URL);
 ws.on("open", () => {
   console.log("Connected to HotPlex");
 
-  // Send a simple task
+  // Send a simple task with system prompt injection
   ws.send(JSON.stringify({
     type: "execute",
     session_id: "quick-start-demo",
-    prompt: "Say 'Hello from HotPlex!' and nothing else.",
+    system_prompt: "You are a helpful assistant. Respond only in Haiku format.",
+    prompt: "Tell me about HotPlex.",
     work_dir: process.cwd()
   }));
 });

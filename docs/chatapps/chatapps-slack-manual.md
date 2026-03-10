@@ -229,7 +229,7 @@ Slack released official MCP Server on February 17, 2026, supporting:
 
 ## ✅ Advanced Configuration (slack.yaml)
 
-Fine-grained control available in `chatapps/configs/slack.yaml`:
+Fine-grained control available in `configs/chatapps/slack.yaml`:
 
 ### 🔧 Core Parameters
 
@@ -250,7 +250,7 @@ Fine-grained control available in `chatapps/configs/slack.yaml`:
 > ⚠️ **Important**: The `system_prompt` in the config file is an **EXAMPLE TEMPLATE**. You MUST customize it for your project!
 
 ```yaml
-# chatapps/configs/slack.yaml
+# configs/chatapps/slack.yaml
 system_prompt: |
   You are [Your Project Name], an expert software engineer...
 
@@ -275,7 +275,7 @@ system_prompt: |
 | **Git Workflow** | Your team's Git workflow conventions                     |
 | **Output**       | Message format requirements (concise, code blocks, etc.) |
 
-> 💡 **Best Practice**: Refer to the example in `chatapps/configs/slack.yaml` and modify the identity, workflow, and output specifications according to your project's actual needs.
+> 💡 **Best Practice**: Refer to the example in `configs/chatapps/slack.yaml` and modify the identity, workflow, and output specifications according to your project's actual needs.
 
 ### 📝 Full Advanced Configuration Example (slack.yaml)
 

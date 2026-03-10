@@ -122,4 +122,4 @@ HOTPLEX_SLACK_APP_TOKEN=xapp-在这里粘贴你复制的内容
 >
 > 请直接翻看核心架构宝典 👉 [Slack App 核心技术配置手册](./chatapps-slack-manual-zh.md)。
 >
-> 🔔 **特别提醒**：`chatapps/configs/slack.yaml` 中的 `system_prompt` 是示例模板，你需要根据自己的项目需求定制 AI 的身份、Git 工作流程和输出规范！
+> 🔔 **特别提醒**：`configs/chatapps/slack.yaml` 中的 `system_prompt` 是示例模板，你需要根据自己的项目需求定制 AI 的身份、Git 工作流程和输出规范！

@@ -22,7 +22,7 @@ HotPlex uses a layered configuration system with the following priority (highest
 ```
 1. Command-line flags     (--config, --port, etc.)
 2. Environment variables  (HOTPLEX_*)
-3. YAML config files      (chatapps/configs/*.yaml)
+3. YAML config files      (configs/chatapps/*.yaml)
 4. Default values         (built-in defaults)
 ```
 
@@ -171,7 +171,7 @@ HotPlex uses a layered configuration system with the following priority (highest
 ### Structure
 
 ```yaml
-# chatapps/configs/slack.yaml
+# configs/chatapps/slack.yaml
 
 # [Required] Platform identifier
 platform: slack

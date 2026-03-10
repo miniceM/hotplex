@@ -241,6 +241,7 @@ func (r *Engine) executeWithMultiplex(
 	sessionCfg := intengine.SessionConfig{
 		WorkDir:          cfg.WorkDir,
 		TaskInstructions: cfg.TaskInstructions,
+		BaseSystemPrompt: cfg.BaseSystemPrompt,
 	}
 
 	// GetOrCreateSession reuses existing process or starts a new one

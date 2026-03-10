@@ -16,6 +16,7 @@ import (
 	"github.com/hrygo/hotplex"
 	"github.com/hrygo/hotplex/brain"
 	"github.com/hrygo/hotplex/chatapps"
+	"github.com/hrygo/hotplex/internal/config"
 	"github.com/hrygo/hotplex/internal/server"
 	"github.com/hrygo/hotplex/provider"
 	"github.com/joho/godotenv"
@@ -31,6 +32,7 @@ var (
 func main() {
 	// Parse command line flags
 	configDir := flag.String("config", "", "ChatApps config directory (takes priority over HOTPLEX_CHATAPPS_CONFIG_DIR env var)")
+	serverConfig := flag.String("server-config", "", "Server config YAML file (takes priority over HOTPLEX_SERVER_CONFIG env var)")
 	flag.Parse()
 
 	// 0. Load .env file
@@ -103,12 +105,26 @@ func main() {
 		logger.Warn("Native Brain initialization error (fail-open)", "error", err)
 	}
 
+	// 1.2 Load server configuration from YAML
+	serverConfigPath := config.ResolveConfigPath(*serverConfig)
+	var serverCfg *config.ServerLoader
+	if serverConfigPath != "" {
+		var err error
+		serverCfg, err = config.NewServerLoader(serverConfigPath, logger)
+		if err != nil {
+			logger.Warn("Failed to load server config, using defaults", "error", err)
+		}
+	}
+
 	// 2. Initialize HotPlex Core Engine
+	// Priority: environment variables > YAML config > defaults
 	idleTimeout := 1 * time.Hour
 	if val := os.Getenv("HOTPLEX_IDLE_TIMEOUT"); val != "" {
 		if d, err := time.ParseDuration(val); err == nil {
 			idleTimeout = d
 		}
+	} else if serverCfg != nil {
+		idleTimeout = serverCfg.GetIdleTimeout()
 	}
 
 	executionTimeout := 30 * time.Minute
@@ -116,6 +132,14 @@ func main() {
 		if d, err := time.ParseDuration(val); err == nil {
 			executionTimeout = d
 		}
+	} else if serverCfg != nil {
+		executionTimeout = serverCfg.GetTimeout()
+	}
+
+	// Get base system prompt from config
+	var baseSystemPrompt string
+	if serverCfg != nil {
+		baseSystemPrompt = serverCfg.GetSystemPrompt()
 	}
 
 	// 2.1 Decide Provider
@@ -154,11 +178,12 @@ func main() {
 	}
 
 	opts := hotplex.EngineOptions{
-		Timeout:     executionTimeout,
-		IdleTimeout: idleTimeout,
-		Logger:      logger,
-		AdminToken:  adminToken,
-		Provider:    prv,
+		Timeout:          executionTimeout,
+		IdleTimeout:      idleTimeout,
+		Logger:           logger,
+		AdminToken:       adminToken,
+		Provider:         prv,
+		BaseSystemPrompt: baseSystemPrompt,
 	}
 
 	engine, err := hotplex.NewEngine(opts)
@@ -226,7 +251,11 @@ func main() {
 	}()
 
 	// 4. Start HTTP server
+	// Priority: environment variables > YAML config > defaults
 	port := os.Getenv("HOTPLEX_PORT")
+	if port == "" && serverCfg != nil {
+		port = serverCfg.GetPort()
+	}
 	if port == "" {
 		port = "8080"
 	}

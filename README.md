@@ -55,7 +55,7 @@ make build
 # Start with Slack (or any platform)
 export HOTPLEX_SLACK_BOT_TOKEN=xoxb-...
 export HOTPLEX_SLACK_APP_TOKEN=xapp-...
-./hotplexd --config chatapps/configs/slack.yaml
+./hotplexd --config configs/chatapps/slack.yaml
 ```
 
 ### Requirements
@@ -174,7 +174,7 @@ engine.Execute(context.Background(), cfg, "Refactor this function", func(eventTy
 ### Slack Bot
 
 ```yaml
-# chatapps/configs/slack.yaml
+# configs/chatapps/slack.yaml
 platform: slack
 mode: socket
 
@@ -202,7 +202,7 @@ assistant:
 export HOTPLEX_SLACK_BOT_USER_ID=B12345
 export HOTPLEX_SLACK_BOT_TOKEN=xoxb-...
 export HOTPLEX_SLACK_APP_TOKEN=xapp-...
-./hotplexd --config chatapps/configs/slack.yaml
+./hotplexd --config configs/chatapps/slack.yaml
 ```
 
 ### WebSocket API

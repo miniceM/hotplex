@@ -227,7 +227,7 @@ go mod tidy
 
 1. **Command flags** (highest priority)
 2. **Environment variables** (`.env` file)
-3. **YAML config files** (`chatapps/configs/*.yaml`)
+3. **YAML config files** (`configs/chatapps/*.yaml`)
 4. **Defaults** (lowest priority)
 
 ### Environment Variables
@@ -255,7 +255,7 @@ HOTPLEX_SLACK_APP_TOKEN=xapp-...
 ### YAML Config Structure
 
 ```yaml
-# chatapps/configs/slack.yaml
+# configs/chatapps/slack.yaml
 platform: slack
 
 provider:

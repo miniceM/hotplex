@@ -78,10 +78,10 @@ export HOTPLEX_SLACK_SIGNING_SECRET=xxx
 
 ```bash
 # Method 1: Use --config flag to specify config directory (recommended, highest priority)
-hotplexd --config chatapps/configs
+hotplexd --config configs/chatapps
 
 # Method 2: Use environment variables
-export HOTPLEX_CHATAPPS_CONFIG_DIR=chatapps/configs
+export HOTPLEX_CHATAPPS_CONFIG_DIR=configs/chatapps
 export HOTPLEX_CHATAPPS_ENABLED=true
 hotplexd
 ```
