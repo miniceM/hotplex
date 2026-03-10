@@ -315,7 +315,10 @@ docker-build: ## @docker Build image (multi-stage, hotplexd always rebuilt)
 
 docker-build-cache: ## @docker Build image (legacy, full cache - for debugging)
 	@printf "${CYAN}🐳 Building Docker image (legacy mode)...${NC}\n"
-	HOST_UID=$(HOST_UID) VERSION=$(VERSION) docker build --cache-from $(DOCKER_IMAGE):latest -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
+	HOST_UID=$(HOST_UID) VERSION=$(VERSION) COMMIT=$(COMMIT) BUILD_TIME=$(BUILD_TIME) \
+		docker build --cache-from $(DOCKER_IMAGE):latest \
+		--build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) --build-arg BUILD_TIME=$(BUILD_TIME) \
+		-t $(DOCKER_IMAGE):$(DOCKER_TAG) .
 
 docker-build-tag: docker-build ## @docker Build and tag image
 	@printf "${GREEN}✅ Build complete.${NC}\n"
@@ -402,6 +405,8 @@ docker-buildx:
 	docker buildx build \
 		--platform linux/amd64,linux/arm64 \
 		--build-arg VERSION=$(VERSION) \
+		--build-arg COMMIT=$(COMMIT) \
+		--build-arg BUILD_TIME=$(BUILD_TIME) \
 		--tag $(DOCKER_REGISTRY)/$(DOCKER_IMAGE):$(DOCKER_TAG) \
 		--tag $(DOCKER_REGISTRY)/$(DOCKER_IMAGE):$(VERSION) \
 		--push .
@@ -418,37 +423,61 @@ STACK_TAG ?= latest
 
 stack-go: ## @docker Build HotPlex + Go (default, same as release)
 	@printf "${CYAN}🔨 Building HotPlex + Go stack...${NC}\n"
-	docker build -f docker/Dockerfile.release --build-arg HOST_UID=$(HOST_UID) \
+	docker build -f docker/Dockerfile.release \
+		--build-arg HOST_UID=$(HOST_UID) \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg COMMIT=$(COMMIT) \
+		--build-arg BUILD_TIME=$(BUILD_TIME) \
 		-t hotplex:go -t hotplex:go-1.26 .
 	@printf "${GREEN}✅ Built hotplex:go${NC}\n"
 
 stack-node: ## @docker Build HotPlex + Node.js/TypeScript stack
 	@printf "${CYAN}🔨 Building HotPlex + Node stack...${NC}\n"
-	docker build -f docker/Dockerfile.node --build-arg HOST_UID=$(HOST_UID) \
+	docker build -f docker/Dockerfile.node \
+		--build-arg HOST_UID=$(HOST_UID) \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg COMMIT=$(COMMIT) \
+		--build-arg BUILD_TIME=$(BUILD_TIME) \
 		-t hotplex:node -t hotplex:node-24 .
 	@printf "${GREEN}✅ Built hotplex:node${NC}\n"
 
 stack-python: ## @docker Build HotPlex + Python stack
 	@printf "${CYAN}🔨 Building HotPlex + Python stack...${NC}\n"
-	docker build -f docker/Dockerfile.python --build-arg HOST_UID=$(HOST_UID) \
+	docker build -f docker/Dockerfile.python \
+		--build-arg HOST_UID=$(HOST_UID) \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg COMMIT=$(COMMIT) \
+		--build-arg BUILD_TIME=$(BUILD_TIME) \
 		-t hotplex:python -t hotplex:python-3.14 .
 	@printf "${GREEN}✅ Built hotplex:python${NC}\n"
 
 stack-java: ## @docker Build HotPlex + Java/Kotlin stack
 	@printf "${CYAN}🔨 Building HotPlex + Java stack...${NC}\n"
-	docker build -f docker/Dockerfile.java --build-arg HOST_UID=$(HOST_UID) \
+	docker build -f docker/Dockerfile.java \
+		--build-arg HOST_UID=$(HOST_UID) \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg COMMIT=$(COMMIT) \
+		--build-arg BUILD_TIME=$(BUILD_TIME) \
 		-t hotplex:java -t hotplex:java-21 .
 	@printf "${GREEN}✅ Built hotplex:java${NC}\n"
 
 stack-rust: ## @docker Build HotPlex + Rust stack
 	@printf "${CYAN}🔨 Building HotPlex + Rust stack...${NC}\n"
-	docker build -f docker/Dockerfile.rust --build-arg HOST_UID=$(HOST_UID) \
+	docker build -f docker/Dockerfile.rust \
+		--build-arg HOST_UID=$(HOST_UID) \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg COMMIT=$(COMMIT) \
+		--build-arg BUILD_TIME=$(BUILD_TIME) \
 		-t hotplex:rust -t hotplex:rust-1.94 .
 	@printf "${GREEN}✅ Built hotplex:rust${NC}\n"
 
 stack-full: ## @docker Build HotPlex + Full stack (all tech stacks)
 	@printf "${CYAN}🔨 Building HotPlex + Full stack...${NC}\n"
-	docker build -f docker/Dockerfile.full --build-arg HOST_UID=$(HOST_UID) \
+	docker build -f docker/Dockerfile.full \
+		--build-arg HOST_UID=$(HOST_UID) \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg COMMIT=$(COMMIT) \
+		--build-arg BUILD_TIME=$(BUILD_TIME) \
 		-t hotplex:full -t hotplex:$(STACK_TAG) .
 	@printf "${GREEN}✅ Built hotplex:full${NC}\n"
 

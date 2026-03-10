@@ -36,31 +36,35 @@ If configured, the server requires an API key passed via header or query paramet
 ### Client Requests (JSON)
 Clients send JSON messages to control the engine.
 
-| Field          | Type    | Description                                                |
-| :------------- | :------ | :--------------------------------------------------------- |
-| `request_id`   | integer | Optional, used to track request-response pairs             |
-| `type`         | string  | `execute`, `stop`, `stats`, or `version`                   |
-| `session_id`   | string  | Unique identifier for the session (optional for `execute`) |
-| `prompt`       | string  | User input (required for `execute`)                        |
-| `instructions` | string  | System instructions/constraints                            |
-| `work_dir`     | string  | Sandbox working directory                                  |
-| `reason`       | string  | Reason for stopping (only for `stop` type)                 |
+| Field           | Type    | Description                                                |
+| :-------------- | :------ | :--------------------------------------------------------- |
+| `request_id`    | integer | Optional, used to track request-response pairs             |
+| `type`          | string  | `execute`, `stop`, `stats`, or `version`                   |
+| `session_id`    | string  | Unique identifier for the session (optional for `execute`) |
+| `prompt`        | string  | User input (required for `execute`)                        |
+| `instructions`  | string  | Task-specific instructions (priority over system prompt)   |
+| `system_prompt` | string  | Session-level system prompt injection                      |
+| `work_dir`      | string  | Sandbox working directory                                  |
+| `reason`        | string  | Reason for stopping (only for `stop` type)                 |
 
 ### Server Events (JSON)
 The server broadcasts events in real-time.
 
-| Event          | Description                                                         |
-| :------------- | :------------------------------------------------------------------ |
-| `thinking`     | Model reasoning or chain-of-thought                               |
-| `tool_use`     | Agent initiating a tool call (e.g., shell command)                 |
-| `tool_result`  | Output/response from the executed tool                             |
-| `answer`       | Final text response from the agent                                 |
-| `completed`    | Task execution finished (includes `session_id` and `stats`)        |
-| `stopped`      | Task manually stopped by client                                    |
-| `session_stats`| Final session statistics (tokens, duration, cost, files modified) |
-| `stats`        | Returns telemetry/usage statistics for a specific session          |
-| `version`      | Returns version information of the underlying CLI engine          |
-| `error`        | Protocol or execution error                                      |
+| Event                | Description                                                         |
+| :------------------- | :------------------------------------------------------------------ |
+| `thinking`           | Model reasoning or chain-of-thought process                         |
+| `tool_use`           | Agent initiating a tool call (e.g., shell command)                  |
+| `tool_result`        | Output/response from the executed tool                              |
+| `answer`             | Incremental text response fragments from the agent                  |
+| `completed`          | Interaction turn finished (includes `session_id` and summary stats) |
+| `session_stats`      | Detailed final statistics (tokens, duration, cost, etc.)            |
+| `stopped`            | Task manually stopped by client                                     |
+| `error`              | Protocol, model, or engine execution error                          |
+| `permission_request` | Agent requesting permission (needs client confirmation)             |
+| `plan_mode`          | Agent entering planning mode                                        |
+| `exit_plan_mode`     | Agent exiting planning mode                                         |
+| `stats`              | Response to `type: "stats"` request                                 |
+| `version`            | Response to `type: "version"` request                               |
 
 ### Example (Python)
 ```python
@@ -75,6 +79,7 @@ async def run_agent():
         req = {
             "type": "execute",
             "prompt": "Write a hello world script in Go",
+            "system_prompt": "You are a senior Gopher. Be concise.",
             "work_dir": "/tmp/demo"
         }
         await websocket.send(json.dumps(req))
@@ -99,6 +104,7 @@ ws.on('open', function open() {
   ws.send(JSON.stringify({
     type: 'execute',
     prompt: 'Write a hello world script in JavaScript',
+    system_prompt: 'You are a Node.js expert.',
     work_dir: '/tmp/demo'
   }));
 });
@@ -166,11 +172,10 @@ Returns a new session ID.
 `POST /session/{id}/message` or `POST /session/{id}/prompt_async`
 Submits a prompt for execution. Returns `202 Accepted` immediately; outputs flow through the SSE channel.
 
-| Field    | Type   | Description                          |
-| :------- | :----- | :----------------------------------- |
-| `prompt` | string | The user query                       |
-| `agent`  | string | Recommended agent name (optional)    |
-| `model`  | string | Specific model identifier (optional) |
+| Field           | Type   | Description                        |
+| :-------------- | :----- | :--------------------------------- |
+| `prompt`        | string | The user query                     |
+| `system_prompt` | string | System prompt injection (optional) |
 
 **SSE Event Mapping**:
 OpenCode SSE messages are formatted as `{"type": "message.part.updated", "properties": {"part": {...}}}`. The `part.type` mappings are:
@@ -187,11 +192,11 @@ Access control via `HOTPLEX_API_KEYS` environment variable is recommended for pr
 
 ## 3. Error Handling & Troubleshooting
 
-| Code                      | Reason                             | Action                          |
-| :------------------------ | :--------------------------------- | :------------------------------ |
-| `401 Unauthorized`        | Invalid or missing API key         | Check `HOTPLEX_API_KEY` env     |
-| `404 Not Found`           | Session ID does not exist          | Create a new session first      |
-| `503 Service Unavailable` | Engine overloaded or shutting down | Retry with exponential backoff  |
+| Code                      | Reason                             | Action                                  |
+| :------------------------ | :--------------------------------- | :-------------------------------------- |
+| `401 Unauthorized`        | Invalid or missing API key         | Check `HOTPLEX_API_KEY` env             |
+| `404 Not Found`           | Session ID does not exist          | Create a new session first              |
+| `503 Service Unavailable` | Engine overloaded or shutting down | Retry with exponential backoff          |
 | `WebSocket Closure 1006`  | Connection dropped (timeout/WAF)   | Check `HOTPLEX_IDLE_TIMEOUT` or network |
 
 ### Common Issues

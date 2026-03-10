@@ -1,11 +1,18 @@
 # ============================================
-# HotPlex + Rust Stack
-# ============================================
-# Extends base HotPlex with Rust productivity tools
-# Build: docker build -f Dockerfile.rust -t hotplex:rust .
-# ============================================
 
 FROM golang:1.25-alpine
+
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG BUILD_TIME=unknown
+
+LABEL org.opencontainers.image.title="HotPlex Rust"
+LABEL org.opencontainers.image.description="HotPlex AI Agent with Go + Rust stack"
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.revision="${COMMIT}"
+LABEL org.opencontainers.image.created="${BUILD_TIME}"
+LABEL org.opencontainers.image.source="https://github.com/hrygo/hotplex"
+LABEL org.opencontainers.image.licenses="MIT"
 
 LABEL maintainer="HotPlex Team"
 LABEL description="HotPlex AI Agent with Go + Rust stack"

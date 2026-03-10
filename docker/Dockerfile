@@ -12,6 +12,10 @@
 # ============================================
 FROM golang:1.25-alpine AS builder
 
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG BUILD_TIME=unknown
+
 WORKDIR /build
 
 # Copy go.mod/go.sum first for dependency caching
@@ -21,9 +25,9 @@ RUN go mod download && go mod verify
 # Copy source and build (this layer always rebuilds)
 COPY . .
 
-ARG VERSION=dev
-ARG COMMIT=unknown
-ARG BUILD_TIME=unknown
+ARG VERSION
+ARG COMMIT
+ARG BUILD_TIME
 
 RUN CGO_ENABLED=0 go build \
     -ldflags="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${BUILD_TIME} -X main.builtBy=docker" \
@@ -123,6 +127,18 @@ RUN npm install -g @anthropic-ai/claude-code@latest
 # Stage 5: Final Image
 # ============================================
 FROM runtime-all AS final
+
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG BUILD_TIME=unknown
+
+LABEL org.opencontainers.image.title="HotPlex"
+LABEL org.opencontainers.image.description="Production-ready execution environment for AI CLI agents"
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.revision="${COMMIT}"
+LABEL org.opencontainers.image.created="${BUILD_TIME}"
+LABEL org.opencontainers.image.source="https://github.com/hrygo/hotplex"
+LABEL org.opencontainers.image.licenses="MIT"
 
 # Copy binary from builder (always fresh)
 COPY --from=builder /build/hotplexd /app/hotplexd

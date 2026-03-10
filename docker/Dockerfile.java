@@ -1,11 +1,18 @@
 # ============================================
-# HotPlex + Java/Kotlin Stack
-# ============================================
-# Extends base HotPlex with Java/Kotlin productivity tools
-# Build: docker build -f Dockerfile.java -t hotplex:java .
-# ============================================
 
 FROM golang:1.25-alpine
+
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG BUILD_TIME=unknown
+
+LABEL org.opencontainers.image.title="HotPlex Java"
+LABEL org.opencontainers.image.description="HotPlex AI Agent with Go + Java/Kotlin stack"
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.revision="${COMMIT}"
+LABEL org.opencontainers.image.created="${BUILD_TIME}"
+LABEL org.opencontainers.image.source="https://github.com/hrygo/hotplex"
+LABEL org.opencontainers.image.licenses="MIT"
 
 LABEL maintainer="HotPlex Team"
 LABEL description="HotPlex AI Agent with Go + Java/Kotlin stack"
