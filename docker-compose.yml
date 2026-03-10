@@ -184,7 +184,8 @@ services:
       - hotplex-go-mod:/home/hotplex/go/pkg/mod:rw # Go module cache
       - hotplex-go-build:/home/hotplex/.cache/go-build:rw # Go build cache
       # Bot-specific volumes (MUST be unique per bot - no variables!)
-      - ${HOME}/.slack/BOT_U0AHRCL1KCM:/home/hotplex/projects:rw
+      # 使用独立工作目录，便于项目隔离和管理
+      - ${HOME}/workspace/hotplex-workspace:/home/hotplex/projects:rw
       - ${HOME}/.gitconfig-hotplex:/home/hotplex/.gitconfig:ro
     labels:
       - "hotplex.bot.role=primary"
