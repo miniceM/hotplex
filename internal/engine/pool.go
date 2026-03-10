@@ -344,13 +344,21 @@ func (sm *SessionPool) startSession(ctx context.Context, sessionID string, cfg S
 		err := cmd.Wait()
 		if sess.GetStatus() != SessionStatusDead {
 			sessLog.Warn("Session OS process exited unexpectedly", "exit_error", err, "is_resuming", isResuming)
-			// If this was a resume attempt that failed, delete the stale marker
+			// If this was a resume attempt that failed, delete the stale marker and CLI session file
 			// This allows the next request to create a fresh session instead of retrying with a dead session
 			if isResuming {
+				// Delete marker first
 				if delErr := sm.markerStore.Delete(providerSessionID); delErr != nil {
 					sessLog.Warn("Failed to delete stale session marker", "error", delErr)
 				} else {
 					sessLog.Info("Deleted stale session marker after failed resume", "provider_session_id", providerSessionID)
+				}
+				// Also clean up the CLI session file to prevent "Session ID is already in use" errors
+				// This is critical because the CLI's internal session state may conflict on next retry
+				if cleanupErr := sm.provider.CleanupSession(providerSessionID, sess.Config.WorkDir); cleanupErr != nil {
+					sessLog.Warn("Failed to cleanup CLI session file after failed resume", "error", cleanupErr)
+				} else {
+					sessLog.Info("Cleaned up CLI session file after failed resume", "provider_session_id", providerSessionID)
 				}
 			}
 			// Update status to Dead and notify callback
