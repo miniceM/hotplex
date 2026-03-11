@@ -17,7 +17,6 @@ RUN if [ "$ALPINE_MIRROR" != "dl-cdn.alpinelinux.org" ]; then \
     fi && \
     apk add --no-cache \
     py3-pip \
-    py3-venv \
     libffi-dev \
     openssl-dev \
     postgresql-dev \

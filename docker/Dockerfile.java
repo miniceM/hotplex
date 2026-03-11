@@ -20,7 +20,7 @@ RUN if [ "$ALPINE_MIRROR" != "dl-cdn.alpinelinux.org" ]; then \
     ttf-dejavu
 
 # Gradle
-ENV GRADLE_VERSION=9.4
+ENV GRADLE_VERSION=8.14
 RUN wget -q https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip && \
     unzip gradle-${GRADLE_VERSION}-bin.zip && \
     mv gradle-${GRADLE_VERSION} /opt/gradle && \

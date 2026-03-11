@@ -16,6 +16,7 @@ ARG NPM_MIRROR
 RUN if [ "$ALPINE_MIRROR" != "dl-cdn.alpinelinux.org" ]; then \
         sed -i "s/dl-cdn.alpinelinux.org/$ALPINE_MIRROR/g" /etc/apk/repositories; \
     fi && \
+    npm install -g corepack && \
     corepack enable && \
     corepack prepare pnpm@latest --activate && \
     corepack prepare yarn@stable --activate && \

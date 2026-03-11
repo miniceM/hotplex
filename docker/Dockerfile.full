@@ -20,6 +20,7 @@ ARG RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 RUN if [ "$ALPINE_MIRROR" != "dl-cdn.alpinelinux.org" ]; then \
         sed -i "s/dl-cdn.alpinelinux.org/$ALPINE_MIRROR/g" /etc/apk/repositories; \
     fi && \
+    npm install -g corepack && \
     corepack enable && \
     corepack prepare pnpm@latest --activate && \
     corepack prepare yarn@stable --activate && \
@@ -33,7 +34,7 @@ RUN if [ "$ALPINE_MIRROR" != "dl-cdn.alpinelinux.org" ]; then \
 ENV BUN_INSTALL="/home/hotplex/.bun"
 
 # 2. Python Stack
-RUN apk add --no-cache py3-pip py3-venv libffi-dev openssl-dev postgresql-dev sqlite-dev && \
+RUN apk add --no-cache py3-pip libffi-dev openssl-dev postgresql-dev sqlite-dev && \
     if [ -n "$PYTHON_MIRROR" ]; then \
         pip3 config set global.index-url "$PYTHON_MIRROR"; \
     fi && \
@@ -65,7 +66,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
 
 # 4. Java/Kotlin Stack
 RUN apk add --no-cache openjdk25 fontconfig ttf-dejavu
-ENV GRADLE_VERSION=9.4
+ENV GRADLE_VERSION=8.14
 RUN wget -q https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip && \
     unzip gradle-${GRADLE_VERSION}-bin.zip -d /opt && \
     rm gradle-${GRADLE_VERSION}-bin.zip
