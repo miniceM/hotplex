@@ -1,5 +1,13 @@
 # CHANGELOG.md
 
+## [v0.26.1] - 2026-03-12
+
+### Changed
+
+- **Version Sync** - Synchronized hotplex.go version number with CHANGELOG.md
+
+---
+
 ## [v0.26.0] - 2026-03-12
 
 ### 🚀 Major Release - Docker 1+n Architecture & Multi-Stack support

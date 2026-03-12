@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	Version      = "0.18.1"
+	Version      = "0.26.1"
 	VersionMajor = 0
-	VersionMinor = 18
+	VersionMinor = 26
 	VersionPatch = 1
 )
 
