@@ -230,7 +230,7 @@ Slack 于 2026年2月17日 发布了官方 MCP Server，支持：
 
 ## ✅ 高级配置全解 (slack.yaml)
 
-在代码库的 `configs/chatapps/slack.yaml` 中可进行细粒度控制：
+在代码库的 `chatapps/configs/slack.yaml` 中可进行细粒度控制：
 
 ### 🔧 核心参数
 
@@ -251,7 +251,7 @@ Slack 于 2026年2月17日 发布了官方 MCP Server，支持：
 > ⚠️ **重要**：配置文件中的 `system_prompt` 是 **示例模板**，你需要根据自己的项目需求进行定制！
 
 ```yaml
-# configs/chatapps/slack.yaml
+# chatapps/configs/slack.yaml
 system_prompt: |
   You are [你的项目名称], an expert software engineer...
 
@@ -276,7 +276,7 @@ system_prompt: |
 | **Git Workflow** | 你的团队 Git 工作流程规范        |
 | **Output**       | 消息格式要求（简洁、代码块等）   |
 
-> 💡 **最佳实践**：参考 `configs/chatapps/slack.yaml` 中的示例，根据你的项目实际情况修改身份、工作流程和输出规范。
+> 💡 **最佳实践**：参考 `chatapps/configs/slack.yaml` 中的示例，根据你的项目实际情况修改身份、工作流程和输出规范。
 
 ### 📝 完整高级配置示例 (slack.yaml)
 
@@ -568,14 +568,65 @@ message_store:
 
 ## 🚑 常见故障排查
 
-1. **机器人没有 ID？**
+### ⚠️ 关键环境变量配置（必须）
+
+在开始使用之前，**必须**在 `.env` 文件中配置以下两个环境变量，否则 Bot 将无法响应消息：
+
+```bash
+# 1. Bot User ID - 机器人的用户 ID（必须）
+HOTPLEX_SLACK_BOT_USER_ID=UXXXXXXXXXX
+
+# 2. Primary Owner - 你的 Slack User ID（必须）
+HOTPLEX_SLACK_PRIMARY_OWNER=UXXXXXXXXXX
+```
+
+**如何获取这两个 ID？**
+
+#### 获取 Bot User ID
+```bash
+# 使用 Bot Token 调用 Slack API
+curl -X POST "https://slack.com/api/auth.test" \
+  -H "Authorization: Bearer xoxb-YOUR_BOT_TOKEN" | jq '.user_id'
+```
+
+#### 获取你的 User ID
+1. 打开 Slack 桌面端
+2. 点击左上角你的头像/workspace 名称
+3. 选择 "View profile"
+4. 点击右上角 "More" (三个点)
+5. 选择 "Copy member ID"
+6. 粘贴得到类似 `U0AJLF46B0R` 的 ID
+
+**为什么这两个 ID 是必须的？**
+
+- **HOTPLEX_SLACK_BOT_USER_ID**：
+  - 用于识别机器人自己发送的消息
+  - 防止 Bot 陷入自我响应的死循环
+  - 在 multibot 模式下识别 @mention
+
+- **HOTPLEX_SLACK_PRIMARY_OWNER**：
+  - 指定 Bot 的所有者（管理员）
+  - 当 `owner_policy: trusted` 时，只有配置的用户才能使用 Bot
+  - 如果未配置，所有消息都将被拒绝（包括 DM）
+
+### 常见问题
+
+1. **机器人没有响应任何消息？**
+   - 检查是否配置了 `HOTPLEX_SLACK_BOT_USER_ID` 和 `HOTPLEX_SLACK_PRIMARY_OWNER`
+   - 启用 DEBUG 日志：`export HOTPLEX_LOG_LEVEL=DEBUG`
+   - 查看日志中是否有 `Message ignored by thread ownership policy`
+
+2. **机器人没有 ID？**
    - 进入 Slack，点击机器人头像查看 Profile，点击图标旁边的 `...` -> `Copy member ID`。
-2. **"Dispatch failed"?**
+
+3. **"Dispatch failed"?**
    - 确认 `.env` 中的 `HOTPLEX_SLACK_MODE` 与你在 Slack 后台启用的功能匹配（例如开启了 Socket Mode 但配了 `http` 模式）。
-3. **消息不更新或权限不足？**
+
+4. **消息不更新或权限不足？**
    - 检查 `Bot Token` 是否失效。
    - **重要提醒**：如果你在 Slack 后台更新了 `Scopes`（权限范围），必须点击 **"Reinstall to Workspace"** 重新安装 App，新权限才会生效。
-4. **🔴 2026 经典应用停用**
+
+5. **🔴 2026 经典应用停用**
    - Classic Apps 将于 **2026年11月16日** 停用
    - 检查 [Slack App Dashboard](https://api.slack.com/apps) 确认你的 App 类型
    - 如果仍在使用旧版 Manifest，请重新创建并迁移配置

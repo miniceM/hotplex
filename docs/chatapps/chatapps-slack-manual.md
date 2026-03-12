@@ -229,7 +229,7 @@ Slack released official MCP Server on February 17, 2026, supporting:
 
 ## ✅ Advanced Configuration (slack.yaml)
 
-Fine-grained control available in `configs/chatapps/slack.yaml`:
+Fine-grained control available in `chatapps/configs/slack.yaml`:
 
 ### 🔧 Core Parameters
 
@@ -250,7 +250,7 @@ Fine-grained control available in `configs/chatapps/slack.yaml`:
 > ⚠️ **Important**: The `system_prompt` in the config file is an **EXAMPLE TEMPLATE**. You MUST customize it for your project!
 
 ```yaml
-# configs/chatapps/slack.yaml
+# chatapps/configs/slack.yaml
 system_prompt: |
   You are [Your Project Name], an expert software engineer...
 
@@ -275,7 +275,7 @@ system_prompt: |
 | **Git Workflow** | Your team's Git workflow conventions                     |
 | **Output**       | Message format requirements (concise, code blocks, etc.) |
 
-> 💡 **Best Practice**: Refer to the example in `configs/chatapps/slack.yaml` and modify the identity, workflow, and output specifications according to your project's actual needs.
+> 💡 **Best Practice**: Refer to the example in `chatapps/configs/slack.yaml` and modify the identity, workflow, and output specifications according to your project's actual needs.
 
 ### 📝 Full Advanced Configuration Example (slack.yaml)
 
@@ -567,14 +567,67 @@ message_store:
 
 ## 🚑 Troubleshooting
 
-1. **Bot has no ID?**
+### ⚠️ Required Environment Variables
+
+**Before using the bot, you MUST configure the following environment variables in your `.env` file, or the bot will not respond to any messages:**
+
+```bash
+# 1. Bot User ID - Your bot's user ID (REQUIRED)
+HOTPLEX_SLACK_BOT_USER_ID=UXXXXXXXXXX
+
+# 2. Primary Owner - Your Slack User ID (REQUIRED)
+HOTPLEX_SLACK_PRIMARY_OWNER=UXXXXXXXXXX
+```
+
+**How to get these IDs?**
+
+#### Get Bot User ID
+```bash
+# Use Bot Token to call Slack API
+curl -X POST "https://slack.com/api/auth.test" \
+  -H "Authorization: Bearer xoxb-YOUR_BOT_TOKEN" | jq '.user_id'
+```
+
+#### Get Your User ID
+1. Open Slack desktop app
+2. Click your avatar/workspace name in top-left corner
+3. Select "View profile"
+4. Click "More" (three dots) in top-right
+5. Select "Copy member ID"
+6. Paste to get ID like `U0AJLF46B0R`
+
+**Why are these IDs required?**
+
+- **HOTPLEX_SLACK_BOT_USER_ID**:
+  - Used to identify messages sent by the bot itself
+  - Prevents infinite loops (bot responding to its own messages)
+  - Required for @mention detection in multibot mode
+
+- **HOTPLEX_SLACK_PRIMARY_OWNER**:
+  - Specifies the bot's administrator/owner
+  - When `owner_policy: trusted`, only configured users can use the bot
+  - If missing, all messages are rejected (including DMs)
+
+**Without these two IDs, the bot will not respond to any messages!**
+
+### Common Issues
+
+1. **Bot not responding to any messages?**
+   - Check if `HOTPLEX_SLACK_BOT_USER_ID` and `HOTPLEX_SLACK_PRIMARY_OWNER` are configured
+   - Enable DEBUG logging: `export HOTPLEX_LOG_LEVEL=DEBUG`
+   - Check logs for "Message ignored by thread ownership policy"
+
+2. **Bot has no ID?**
    - In Slack, click bot avatar → Profile → Click `...` next to icon → `Copy member ID`.
-2. **"Dispatch failed"?**
+
+3. **"Dispatch failed"?**
    - Confirm `.env` `HOTPLEX_SLACK_MODE` matches enabled features in Slack console (e.g., enabled Socket Mode but configured `http` mode).
-3. **Messages not updating or insufficient permissions?**
+
+4. **Messages not updating or insufficient permissions?**
    - Check if Bot Token has expired.
    - **Important Reminder**: If you update Scopes in Slack console, you must click **"Reinstall to Workspace"** for new permissions to take effect.
-4. **🔴 2026 Classic Apps Deprecation**
+
+5. **🔴 2026 Classic Apps Deprecation**
    - Classic Apps will be deprecated on **November 16, 2026**
    - Check [Slack App Dashboard](https://api.slack.com/apps) to confirm your App type
    - If still using old Manifest, please recreate and migrate configuration
