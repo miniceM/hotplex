@@ -8,7 +8,7 @@ FROM hotplex:artifacts AS binary-provider
 # 2. Source SDKs (Cached Official Images)
 FROM golang:1.26-bookworm AS go-sdk
 FROM python:3.14-bookworm AS python-sdk
-FROM eclipse-temurin:25-jdk-bookworm AS java-sdk
+FROM eclipse-temurin:25-jdk AS java-sdk
 FROM rust:1.94-bookworm AS rust-sdk
 
 # 3. Target Foundation
@@ -53,7 +53,7 @@ COPY --from=rust-sdk /usr/local/rustup /usr/local/rustup
 COPY --from=rust-sdk /usr/local/cargo /usr/local/cargo
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    protobuf-compiler lsb-release zip unzip tree htop ripgrep fd-find bat && \
+    protobuf-compiler lsb-release zip unzip tree htop ripgrep fd-find bat build-essential && \
     rm -rf /var/lib/apt/lists/* && \
     chown -R hotplex:hotplex /home/hotplex /app /usr/local/cargo /usr/local/rustup
 

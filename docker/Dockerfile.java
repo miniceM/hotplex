@@ -6,7 +6,7 @@
 FROM hotplex:artifacts AS binary-provider
 
 # 2. SDK Layer
-FROM eclipse-temurin:25-jdk-bookworm AS sdk-source
+FROM eclipse-temurin:25-jdk AS sdk-source
 
 # 3. Target Foundation
 FROM hotplex:base
