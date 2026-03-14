@@ -12,7 +12,7 @@ Before we begin, ensure you have:
 
 | Requirement | Version | Verification |
 |-------------|---------|--------------|
-| Go | ≥1.21 | `go version` |
+| Go | ≥1.25 | `go version` |
 | Git | Any | `git --version` |
 | Claude Code (optional) | Latest | `claude --version` |
 
@@ -40,7 +40,7 @@ chmod +x hotplexd
 ```
 
 ```bash [Go Install]
-# Install via Go (requires Go 1.21+)
+# Install via Go (requires Go 1.25+)
 go install github.com/hrygo/hotplex/cmd/hotplexd@latest
 
 # Add to PATH if needed
@@ -95,7 +95,7 @@ Expected response from `/health`:
 ```json
 {
   "status": "healthy",
-  "version": "0.17.0",
+  "version": "0.27.0",
   "uptime": "1m23s"
 }
 ```
