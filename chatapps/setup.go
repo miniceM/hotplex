@@ -13,7 +13,9 @@ import (
 	"github.com/hrygo/hotplex/chatapps/base"
 	"github.com/hrygo/hotplex/chatapps/feishu"
 	"github.com/hrygo/hotplex/chatapps/slack"
+	"github.com/hrygo/hotplex/chatapps/slack/apphome"
 	"github.com/hrygo/hotplex/engine"
+	"github.com/hrygo/hotplex/internal/sys"
 	"github.com/hrygo/hotplex/provider"
 )
 
@@ -67,7 +69,7 @@ func Setup(ctx context.Context, logger *slog.Logger, configDir ...string) (http.
 				logger.Debug("User config directory does not exist", "path", userConfigDir, "cause", err)
 			} else {
 				dir = userConfigDir
-				logger.Debug("Using user config directory", "path", dir)
+				logger.Info("Using user config directory", "path", dir)
 			}
 		}
 	}
@@ -77,7 +79,7 @@ func Setup(ctx context.Context, logger *slog.Logger, configDir ...string) (http.
 		dir = "configs/chatapps"
 		// Check if default config directory exists
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
-			logger.Debug("Default config directory not found, skipping config loading", "path", dir)
+			logger.Info("Default config directory not found, skipping config loading", "path", dir)
 			dir = ""
 		}
 	}
@@ -87,7 +89,7 @@ func Setup(ctx context.Context, logger *slog.Logger, configDir ...string) (http.
 	if dir != "" {
 		loader, err = NewConfigLoader(dir, logger)
 		if err != nil {
-			logger.Debug("Could not load configuration from directory", "path", dir, "cause", err)
+			logger.Info("Could not load configuration from directory", "path", dir, "cause", err)
 			// Don't fail completely, try to continue with env-based config
 		}
 	}
@@ -269,7 +271,7 @@ func setupPlatform(
 			}
 		}
 		if missing {
-			logger.Debug("Platform skipped (missing required env vars)", "platform", platform, "required", requiredEnvVars)
+			logger.Info("Platform skipped (missing required env vars)", "platform", platform, "required", requiredEnvVars)
 			return
 		}
 	}
@@ -293,7 +295,7 @@ func setupPlatform(
 	// 2. Create Adapter
 	adapter := adapterFactory(pc)
 	if adapter == nil {
-		logger.Debug("Platform not initialized (likely missing credentials)", "platform", platform)
+		logger.Info("Platform not initialized (likely missing credentials)", "platform", platform)
 		return
 	}
 
@@ -301,9 +303,9 @@ func setupPlatform(
 	// Only adapters that implement EngineSupport will receive the engine
 	if engineSupport, ok := adapter.(base.EngineSupport); ok {
 		engineSupport.SetEngine(eng)
-		logger.Debug("Engine injected", "platform", platform)
+		logger.Info("Engine injected", "platform", platform)
 	} else {
-		logger.Debug("Adapter does not implement EngineSupport", "platform", platform)
+		logger.Info("Adapter does not implement EngineSupport", "platform", platform)
 	}
 
 	// 3. Create EngineMessageHandler
@@ -315,12 +317,12 @@ func setupPlatform(
 		WithWorkDirFn(func(sessionID string) string {
 			// Use work_dir from config if specified
 			if pc.Engine.WorkDir != "" {
-				// Expand ~ to home directory and resolve . to absolute path
-				workDir := ExpandPath(pc.Engine.WorkDir)
-				logger.Debug("Using work_dir from config",
+				// Expand environment variables, ~ to home, and resolve .
+				workDir := sys.ExpandPath(pc.Engine.WorkDir)
+				logger.Info("Work directory resolved",
 					"platform", platform,
-					"config_value", pc.Engine.WorkDir,
-					"resolved_path", workDir)
+					"config", pc.Engine.WorkDir,
+					"path", workDir)
 				return workDir
 			}
 			// Default: use temp directory with platform/session isolation
@@ -338,6 +340,25 @@ func setupPlatform(
 	if err := manager.Register(adapter); err != nil {
 		logger.Error("Failed to register adapter", "platform", platform, "error", err)
 	} else {
+		// Setup AppHome capability center for Slack after registration
+		if platform == "slack" {
+			if slackAdapter, ok := adapter.(*slack.Adapter); ok {
+				client := slackAdapter.GetSlackClient()
+				if client != nil {
+					appHomeConfig := apphome.Config{
+						Enabled:           true,
+						CapabilitiesPath:  os.Getenv("HOTPLEX_SLACK_CAPABILITIES_PATH"),
+					}
+					// Pass nil for brain - can be set later if needed
+					handler, _, _ := apphome.Setup(client, nil, appHomeConfig, logger)
+					if handler != nil {
+						slackAdapter.SetAppHomeHandler(handler)
+						logger.Info("AppHome capability center initialized", "platform", platform)
+					}
+				}
+			}
+		}
+
 		if pc != nil && pc.SourceFile != "" {
 			logger.Info("Platform successfully initialized from configuration file", "platform", platform, "file", pc.SourceFile)
 		} else {
@@ -403,53 +424,17 @@ func createEngineForPlatform(pc *PlatformConfig, logger *slog.Logger) (*engine.E
 // Supports both ~ and ~/path formats.
 // Returns an empty string if the path contains traversal attacks.
 func ExpandPath(path string) string {
-	if len(path) == 0 {
-		return path
+	if path == "" {
+		return ""
 	}
-
-	// Handle ~ expansion
-	if path[0] == '~' {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return path // Return original path if home dir cannot be determined
-		}
-
-		if len(path) == 1 {
-			return homeDir
-		}
-
-		// Handle ~/path
-		if path[1] == '/' || path[1] == filepath.Separator {
-			return filepath.Join(homeDir, path[2:])
-		}
-
-		// Handle ~username/path (not commonly used, but supported)
-		return filepath.Join(homeDir, path[1:])
+	expanded := sys.ExpandPath(path)
+	if expanded == "" {
+		return ""
 	}
-
-	// Handle special case: "." should be expanded to current working directory
-	if path == "." {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return path // Return original if we can't get cwd
-		}
-		return cwd
+	if strings.HasPrefix(expanded, "/") && isSensitivePath(expanded) {
+		return "" // Block access to sensitive paths
 	}
-
-	// Clean the path to resolve any . or .. elements
-	cleaned := filepath.Clean(path)
-
-	// Security check: detect path traversal attempts
-	// After cleaning, paths starting with / are absolute
-	// Paths starting with .. are attempting to escape the current directory
-	if strings.HasPrefix(cleaned, "/") {
-		// Absolute path - check for common system directories
-		if isSensitivePath(cleaned) {
-			return "" // Block access to sensitive paths
-		}
-	}
-
-	return cleaned
+	return filepath.Clean(expanded)
 }
 
 // isSensitivePath checks if a path points to a sensitive system location

@@ -1,5 +1,60 @@
 # CHANGELOG.md
 
+## [v0.27.0] - 2026-03-14
+
+### 🚀 Major Release - Multi-Runtime Architecture & 2026 Best Practice Tooling
+
+This release fundamentally upgrades the HotPlex Docker ecosystem, introducing a multi-runtime base image and a state-of-the-art 2026 developer toolset across all tech stacks.
+
+### Added
+
+#### 🐳 Multi-Runtime Architecture
+- **Consolidated Base Image** - `hotplex:base` now natively includes **Python 3.14** and **Node.js 24**, providing a consistent foundation for cross-language Agent development.
+- **Optimized Stacks** - Inherited runtimes across all images (Go, Rust, Java), enabling immediate support for MCP servers and multi-language scripts.
+
+#### 🛠️ 2026 Best Practice Tooling
+- **Global DX & Security** - Integrated **`trivy`** (security scanning), **`lazygit`** (terminal Git UI), and **`uv`** (Python) / **`bun`** (Node) tools into the core foundation.
+- **Stack-Specific Performance** - Enhanced individual tech stacks with premium tools:
+  - **Go**: Added `gofumpt` for stricter code formatting.
+  - **Python**: Added `pydantic-ai` for production-grade Agent orchestration.
+  - **Rust**: Added `cargo-expand` (macro debugging) and `cargo-deny` (audit/security).
+
+#### 📚 Documentation Professionalization
+- **Architecture Ecosystem Docs** - Comprehensive refactor of `docker/README.md` and `docker/matrix/README.md` for better clarity and alignment.
+- **Simplified Quick Start** - New path-based selector at `docs/quick-start.md` for seamless onboarding.
+- **1+n Matrix Guide** - Updated multi-bot setup guide to reflect current automation and isolation standards.
+
+### Changed
+- **Image Efficiency** - Removed redundant layers and runtime installations from tech stack specific Dockerfiles.
+- **Consolidation** - Removed 4+ outdated deployment guides in favor of a single, authoritative documentation suite.
+
+---
+
+## [v0.26.2] - 2026-03-13
+
+### Added
+- **XDG Compliance** - Standardized configuration, data, and log paths (`~/.config/hotplex`, `~/.local/share/hotplex`).
+- **CLI Flags** - New explicit `--config`, `--env-file`, and `--config-dir` flags for robust configuration control.
+- **Startup Visibility** - Professional system info header in logs showing version, environment, and effective configuration paths.
+
+### Changed
+- **Service Management** - Improved `scripts/service.sh` with automated reload and explicit flag-based startup for macOS and Linux.
+- **Robust Path Expansion** - Enhanced `ExpandPath` with dynamic `HOME` fallback and sensitive path protection (WAF).
+- **Configuration Discovery** - Consolidated `server.yaml` and `.env` search logic with clear precedence (Explicit > Env > XDG > Root).
+
+### Fixed
+- **Read-Only Filesystem Error** - Resolved the "failed to create work directory: mkdir /.hotplex" error by ensuring correct `HOME` resolution in service environments.
+
+---
+
+## [v0.26.1] - 2026-03-12
+
+### Changed
+
+- **Version Sync** - Synchronized hotplex.go version number with CHANGELOG.md
+
+---
+
 ## [v0.26.0] - 2026-03-12
 
 ### 🚀 Major Release - Docker 1+n Architecture & Multi-Stack support

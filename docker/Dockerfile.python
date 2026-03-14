@@ -1,60 +1,41 @@
-# ============================================
-# HotPlex Python Stack
-# ============================================
+# ==============================================================================
+# HotPlex Python Development Stack (2026)
+# ==============================================================================
 
-ARG BASE_IMAGE=hotplex:base
-FROM ${BASE_IMAGE}
+# 1. Source the binary provider
+FROM hotplex:artifacts AS binary-provider
 
-USER root
-ARG ALPINE_MIRROR=dl-cdn.alpinelinux.org
+# 2. SDK Layer
+FROM python:3.14-bookworm AS sdk-source
+
+# 3. Target Foundation
+FROM hotplex:base
+
 ARG PYTHON_MIRROR
 
-# ============================================
-# Python Stack Extensions
-# ============================================
-RUN if [ "$ALPINE_MIRROR" != "dl-cdn.alpinelinux.org" ]; then \
-        sed -i "s/dl-cdn.alpinelinux.org/$ALPINE_MIRROR/g" /etc/apk/repositories; \
-    fi && \
-    apk add --no-cache \
-    py3-pip \
-    libffi-dev \
-    openssl-dev \
-    postgresql-dev \
-    sqlite-dev
+# Inject Python 3.14 SDK (Cached)
+# Use granular copies to avoid shadowing /usr/local tools from base (gh, uv, etc.)
+COPY --from=sdk-source /usr/local/bin/python* /usr/local/bin/
+COPY --from=sdk-source /usr/local/bin/pip* /usr/local/bin/
+COPY --from=sdk-source /usr/local/bin/2to3* /usr/local/bin/
+COPY --from=sdk-source /usr/local/bin/idle* /usr/local/bin/
+COPY --from=sdk-source /usr/local/bin/pydoc* /usr/local/bin/
+COPY --from=sdk-source /usr/local/lib/python3.14 /usr/local/lib/python3.14
+COPY --from=sdk-source /usr/local/lib/libpython3.14* /usr/local/lib/
+COPY --from=sdk-source /usr/local/include/python3.14 /usr/local/include/python3.14
+RUN ldconfig
 
-RUN if [ -n "$PYTHON_MIRROR" ]; then \
-        pip3 config set global.index-url "$PYTHON_MIRROR"; \
-    fi && \
-    pip3 install --upgrade pip setuptools wheel --break-system-packages
+# Development Tools (Cached)
+# uv is already provided by hotplex:base
+RUN if [ -n "$PYTHON_MIRROR" ]; then pip config set global.index-url "$PYTHON_MIRROR"; fi && \
+    pip install --break-system-packages poetry ruff black isort mypy pytest fastapi uvicorn httpx pydantic-ai
 
-# Package managers & Dev tools
-RUN pip3 install --break-system-packages \
-    poetry uv pipx \
-    ruff black isort mypy pyright pylint flake8 \
-    pytest pytest-cov pytest-asyncio pytest-mock hypothesis coverage \
-    ipython ipdb debugpy \
-    fastapi uvicorn gunicorn httpx requests aiohttp typer rich \
-    pandas numpy polars \
-    jupyter jupyterlab notebook \
-    mkdocs mkdocs-material \
-    bandit safety pip-audit && \
-    rm -rf /root/.cache/pip
-
-# Verification
-RUN python3 --version && \
-    poetry --version && \
-    ruff --version && \
-    pytest --version
-
-# User setup
-RUN mkdir -p /home/hotplex/.local && \
-    chown -R hotplex:hotplex /home/hotplex
-
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV PATH="/home/hotplex/.local/bin:${PATH}"
-
-LABEL org.opencontainers.image.title="HotPlex Python"
-LABEL org.opencontainers.image.description="HotPlex AI Agent with Go + Python stack"
+# ==============================================================================
+# 🔥 Late Injection: The Binary (Changes frequently)
+# ==============================================================================
+COPY --from=binary-provider /hotplexd /usr/local/bin/hotplexd
+# ==============================================================================
 
 USER hotplex
+CMD ["/usr/local/bin/hotplexd"]
+LABEL org.opencontainers.image.title="HotPlex Python"

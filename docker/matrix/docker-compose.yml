@@ -1,0 +1,66 @@
+# ------------------------------------------------------------------------------
+# Named Volumes (Shared across instances)
+# ------------------------------------------------------------------------------
+volumes:
+  matrix-go-mod: { name: matrix-go-mod }
+  matrix-go-build: { name: matrix-go-build }
+
+# ------------------------------------------------------------------------------
+# 🚀 Active Services
+# ------------------------------------------------------------------------------
+services:
+  # ============================================================================
+  # Bot 01: Primary Bot (Multi-Bot Matrix)
+  # ============================================================================
+  hotplex-01:
+    extends:
+      file: common.yml
+      service: hotplex-base
+    container_name: hotplex-01
+    ports: [ "127.0.0.1:18080:8080" ]
+    env_file: [ .env-01 ]
+    volumes:
+      # Instance Isolation (Merged with base volumes)
+      - ~/.hotplex/instances/U0AHRCL1KCM/storage:/home/hotplex/.hotplex:rw
+      - ~/.hotplex/instances/U0AHRCL1KCM/claude:/home/hotplex/.claude:rw
+      - ~/.hotplex/instances/U0AHRCL1KCM/projects:/home/hotplex/projects:rw
+    labels:
+      - "hotplex.bot.id=U0AHRCL1KCM"
+      - "hotplex.bot.role=primary"
+
+  # ============================================================================
+  # Bot 02: Secondary Bot (Multi-Bot Matrix)
+  # ============================================================================
+  hotplex-02:
+    extends:
+      file: common.yml
+      service: hotplex-base
+    container_name: hotplex-02
+    ports: [ "127.0.0.1:18081:8080" ]
+    env_file: [ .env-02 ]
+    volumes:
+      # Instance Isolation (Merged with base volumes)
+      - ~/.hotplex/instances/U0AJVRH4YF6/storage:/home/hotplex/.hotplex:rw
+      - ~/.hotplex/instances/U0AJVRH4YF6/claude:/home/hotplex/.claude:rw
+      - ~/.hotplex/instances/U0AJVRH4YF6/projects:/home/hotplex/projects:rw
+    labels:
+      - "hotplex.bot.id=U0AJVRH4YF6"
+      - "hotplex.bot.role=secondary"
+
+  # ============================================================================
+  # Bot 03: Secondary Instance (Auto-added)
+  # ============================================================================
+  hotplex-03:
+    extends:
+      file: common.yml
+      service: hotplex-base
+    container_name: hotplex-03
+    ports: [ "127.0.0.1:18082:8080" ]
+    env_file: [ .env-03 ]
+    volumes:
+      - ~/.hotplex/instances/U0AL7H8UU75/storage:/home/hotplex/.hotplex:rw
+      - ~/.hotplex/instances/U0AL7H8UU75/claude:/home/hotplex/.claude:rw
+      - ~/.hotplex/instances/U0AL7H8UU75/projects:/home/hotplex/projects:rw
+    labels:
+      - "hotplex.bot.id=U0AL7H8UU75"
+      - "hotplex.bot.role=secondary"

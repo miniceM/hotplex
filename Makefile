@@ -1,26 +1,71 @@
 # HotPlex Makefile
 # A premium CLI experience for building and managing HotPlex
 
-# Colors for UI
-CYAN          := \033[0;36m
-GREEN         := \033[0;32m
-YELLOW        := \033[1;33m
-RED           := \033[0;31m
-PURPLE        := \033[0;35m
-BLUE          := \033[0;34m
-BOLD          := \033[1m
-DIM           := \033[2m
-NC            := \033[0m
+# =============================================================================
+# 🌍 Cross-Platform Compatibility
+# =============================================================================
+
+# Detect OS
+ifeq ($(OS),Windows_NT)
+    PLATFORM := Windows
+else
+    PLATFORM := Unix
+endif
+
+# Determine Home Directory
+ifeq ($(PLATFORM),Windows)
+    HOME_DIR := $(USERPROFILE)
+else
+    HOME_DIR := $(HOME)
+endif
+
+# Host configs directory (default to ~/.hotplex/configs)
+HOST_CONFIGS_DIR := $(if $(HOTPLEX_HOST_CONFIGS_DIR),$(HOTPLEX_HOST_CONFIGS_DIR),$(HOME_DIR)/.hotplex/configs)
+
+# Export HOME for subprocess visibility on Windows
+export HOME := $(HOME_DIR)
+
+# Check shell environment on Windows - require POSIX shell
+# Valid POSIX shells on Windows: Git Bash, MSYS2, MinGW, WSL, Cygwin
+ifeq ($(OS),Windows_NT)
+    # Check if running in cmd.exe or PowerShell (no POSIX environment)
+    ifndef MSYSTEM
+        ifndef BASH_VERSION
+            $(error [ERROR] Windows CMD/PowerShell detected - not supported. \
+HotPlex Makefile requires a POSIX-compatible shell: \
+  - Option 1: Git Bash (recommended) - https://git-scm.com/download/win \
+  - Option 2: WSL (Windows Subsystem for Linux) - run 'wsl' in terminal \
+  - Option 3: MSYS2 - https://www.msys2.org/ \
+  - Option 4: Cygwin - https://www.cygwin.com/ \
+)
+        endif
+    endif
+endif
+
+# Common Commands (POSIX-Standard)
+MKDIR := mkdir -p
+RM    := rm -rf
+
+# Colors for UI (use printf for cross-platform compatibility)
+CYAN          := $(shell printf '\033[0;36m')
+GREEN         := $(shell printf '\033[0;32m')
+YELLOW        := $(shell printf '\033[1;33m')
+RED           := $(shell printf '\033[0;31m')
+PURPLE        := $(shell printf '\033[0;35m')
+BLUE          := $(shell printf '\033[0;34m')
+BOLD          := $(shell printf '\033[1m')
+DIM           := $(shell printf '\033[2m')
+NC            := $(shell printf '\033[0m')
 
 # Metadata
 BINARY_NAME   := hotplexd
 CMD_PATH      := ./cmd/hotplexd
 DIST_DIR      := dist
-VERSION       ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+VERSION       ?= 0.26.2
 COMMIT        ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_TIME    ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-LDFLAGS       := -X 'main.version=$(VERSION)' -X 'main.commit=$(COMMIT)' -X 'main.date=$(BUILD_TIME)'
+LDFLAGS       := -X 'main.version=v$(VERSION)' -X 'github.com/hrygo/hotplex.Version=$(VERSION)' -X 'main.commit=$(COMMIT)' -X 'main.date=$(BUILD_TIME)'
 
 LOG_DIR       := .logs
 LOG_FILE      := $(LOG_DIR)/daemon.log
@@ -362,6 +407,7 @@ STACK_VERSION_rust   := 1.94
 # Proxy & mirror config (optimized for mainland China)
 HTTP_PROXY         ?= http://host.docker.internal:7897
 HTTPS_PROXY        ?= http://host.docker.internal:7897
+DEBIAN_MIRROR      ?= mirrors.aliyun.com
 ALPINE_MIRROR      ?= mirrors.aliyun.com
 NPM_MIRROR         ?= https://registry.npmmirror.com
 PYTHON_MIRROR      ?= https://pypi.tuna.tsinghua.edu.cn/simple
@@ -384,79 +430,105 @@ DOCKER_BUILD_PROXY_ARGS := \
 	--build-arg PYTHON_MIRROR=$(PYTHON_MIRROR) \
 	--build-arg GOPROXY=$(GOPROXY) \
 	--build-arg RUSTUP_DIST_SERVER=$(RUSTUP_DIST_SERVER) \
+	--build-arg DEBIAN_MIRROR=$(DEBIAN_MIRROR) \
 	--build-arg GITHUB_PROXY=$(GITHUB_PROXY)
 
 # --- Build ---
 
-docker-build-base: ## @docker Build the shared base image (hotplex:base)
-	@printf "${CYAN}🏗️  Building hotplex:base...${NC}\n"
+docker-build-artifacts: ## @docker Build the HotPlex binary provider
+	@printf "${CYAN}🏗️  Building hotplex:artifacts...${NC}\n"
+	@docker build -f docker/Dockerfile.artifacts \
+		$(DOCKER_BUILD_COMMON_ARGS) \
+		--build-arg GOPROXY=$(GOPROXY) \
+		-t hotplex:artifacts .
+	@printf "${GREEN}✅ Built hotplex:artifacts${NC}\n"
+
+docker-build-foundation: ## @docker Build the shared foundation image (hotplex:base)
+	@printf "${CYAN}🏗️  Building hotplex:base (Foundation)...${NC}\n"
 	@docker build -f docker/Dockerfile.base \
 		$(DOCKER_BUILD_COMMON_ARGS) \
-		--build-arg HTTP_PROXY=$(HTTP_PROXY) \
-		--build-arg HTTPS_PROXY=$(HTTPS_PROXY) \
-		--build-arg GOPROXY=$(GOPROXY) \
-		--build-arg ALPINE_MIRROR=$(ALPINE_MIRROR) \
-		--build-arg NPM_MIRROR=$(NPM_MIRROR) \
-		--build-arg GITHUB_PROXY=$(GITHUB_PROXY) \
+		$(DOCKER_BUILD_PROXY_ARGS) \
 		-t hotplex:base .
 	@printf "${GREEN}✅ Built hotplex:base${NC}\n"
 
-docker-build-app: docker-build-base ## @docker Build the default app image (go stack, depends on base)
-	@printf "${CYAN}🔨 Building hotplex (go stack)...${NC}\n"
-	@docker build -f docker/Dockerfile \
+docker-build-base: docker-build-foundation ## @docker Alias for foundation build
+
+docker-build-go: docker-build-foundation docker-build-artifacts ## @docker Build the Go stack
+	@printf "${CYAN}🏗️  Building hotplex:go...${NC}\n"
+	@docker build -f docker/Dockerfile.golang \
 		$(DOCKER_BUILD_COMMON_ARGS) \
-		$(DOCKER_BUILD_PROXY_ARGS) \
-		-t hotplex:$(STACK_TAG) -t hotplex:go -t hotplex:go-$(STACK_VERSION_go) .
+		-t hotplex:go .
 	@printf "${GREEN}✅ Built hotplex:go${NC}\n"
 
-docker-build-stack: docker-build-base ## @docker Build a specific tech-stack image. Usage: make docker-build-stack S=node
+docker-build-stack: docker-build-foundation docker-build-artifacts ## @docker Build a tech-stack image. Usage: make docker-build-stack S=node
 	@if [ -z "$(S)" ]; then \
 		printf "${RED}❌ Error: S=<stack> is required. Options: $(VALID_STACKS)${NC}\n"; \
 		exit 1; \
 	fi
 	@printf "${CYAN}🔨 Building hotplex:$(S)...${NC}\n"
-	@if [ "$(S)" = "go" ]; then \
-		docker build -f docker/Dockerfile \
-			$(DOCKER_BUILD_COMMON_ARGS) \
-			$(DOCKER_BUILD_PROXY_ARGS) \
-			-t hotplex:$(STACK_TAG) -t hotplex:go -t hotplex:go-$(STACK_VERSION_go) .; \
-	else \
-		docker build -f docker/Dockerfile.$(S) \
-			$(DOCKER_BUILD_COMMON_ARGS) \
-			$(DOCKER_BUILD_PROXY_ARGS) \
-			-t hotplex:$(S) .; \
-	fi
+	@docker build -f docker/Dockerfile.$(S) \
+		$(DOCKER_BUILD_COMMON_ARGS) \
+		$(DOCKER_BUILD_PROXY_ARGS) \
+		-t hotplex:$(S) .
 	@printf "${GREEN}✅ Built hotplex:$(S)${NC}\n"
 
-docker-build-all: docker-build-base ## @docker Build base + all tech-stack images sequentially
+docker-build-all: docker-build-artifacts ## @docker Build all tech-stack images sequentially
 	@printf "${CYAN}🔨 Building all stacks...${NC}\n"
 	@for s in $(VALID_STACKS); do \
 		printf "${CYAN}  → Building hotplex:$$s...${NC}\n"; \
-		if [ "$$s" = "go" ]; then \
-			docker build -f docker/Dockerfile \
-				$(DOCKER_BUILD_COMMON_ARGS) $(DOCKER_BUILD_PROXY_ARGS) \
-				-t hotplex:$(STACK_TAG) -t hotplex:go -t hotplex:go-$(STACK_VERSION_go) . || exit 1; \
-		else \
-			docker build -f docker/Dockerfile.$$s \
-				$(DOCKER_BUILD_COMMON_ARGS) $(DOCKER_BUILD_PROXY_ARGS) \
-				-t hotplex:$$s . || exit 1; \
-		fi; \
+		$(MAKE) docker-build-stack S=$$s || exit 1; \
 	done
 	@printf "${GREEN}🎉 All stacks built!${NC}\n"
 
 # --- Runtime ---
+docker-prepare: ## @docker Prepare host directories for all bot instances
+	@mkdir -p $(HOST_CONFIGS_DIR)
+	@mkdir -p $(HOME_DIR)/.claude
+	@printf "${CYAN}📂 Preparing bot instances...${NC}\n"
+	@for f in docker/matrix/.env-*; do \
+		ID=$$(grep "^HOTPLEX_BOT_ID=" $$f | cut -d= -f2 | tr -d ' ' | tr -d '\r'); \
+		if [ -n "$$ID" ]; then \
+			printf "  - Instance: ${BOLD}$$ID${NC}\n"; \
+			mkdir -p $(HOME_DIR)/.hotplex/instances/$$ID/storage; \
+			mkdir -p $(HOME_DIR)/.hotplex/instances/$$ID/claude; \
+			mkdir -p $(HOME_DIR)/.hotplex/instances/$$ID/projects; \
+		fi; \
+	done
+	@printf "${GREEN}✅ Host environment ready${NC}\n"
 
-docker-up: ## @docker Sync configs and start services
-	@mkdir -p $(HOME)/.hotplex/configs
-	@cp configs/chatapps/*.yaml $(HOME)/.hotplex/configs/ 2>/dev/null || true
-	@printf "${CYAN}🔄 Configs synced${NC}\n"
-	@IMG=$${HOTPLEX_IMAGE:-$$(grep "^HOTPLEX_IMAGE=" .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d ' ')}; \
-	[ -z "$$IMG" ] && IMG="ghcr.io/hrygo/hotplex:latest (default)"; \
-	printf "${PURPLE}🐳 Image: ${BOLD}$$IMG${NC}\n"
-	@HOST_UID=$(HOST_UID) VERSION=$(VERSION) COMMIT=$(COMMIT) BUILD_TIME=$(BUILD_TIME) docker compose up -d
+docker-up: docker-prepare ## @docker Start Matrix services using REMOTE image
+	@cp -r configs/* $(HOST_CONFIGS_DIR)/ 2>/dev/null || true
+	@printf "${CYAN}🔄 Configs synced to ${BOLD}$(HOST_CONFIGS_DIR)${NC}\n"
+	@IMG=$$(cd docker/matrix && docker compose config --images 2>/dev/null | head -n 1); \
+	[ -z "$$IMG" ] && IMG="ghcr.io/hrygo/hotplex:latest-go (default)"; \
+	printf "${YELLOW}🚀 Environment: MATRIX (REMOTE)${NC}\n"; \
+	printf "${PURPLE}🐳 Image: ${BOLD}$$IMG${NC}\n"; \
+	cd docker/matrix && \
+		HOST_UID=$(HOST_UID) \
+		VERSION=$(VERSION) \
+		COMMIT=$(COMMIT) \
+		BUILD_TIME=$(BUILD_TIME) \
+		HOTPLEX_HOST_CONFIGS_DIR=$(HOST_CONFIGS_DIR) \
+		docker compose up -d
+
+docker-dev: docker-prepare ## @docker Start Matrix services using LOCAL image (hotplex:go)
+	@cp -r configs/* $(HOST_CONFIGS_DIR)/ 2>/dev/null || true
+	@printf "${CYAN}🔄 Configs synced to ${BOLD}$(HOST_CONFIGS_DIR)${NC}\n"
+	@printf "${YELLOW}🚀 Environment: LOCAL DEVELOPMENT${NC}\n"; \
+	printf "${PURPLE}🐳 Image: ${BOLD}hotplex:go${NC}\n"; \
+	cd docker/matrix && \
+		HOTPLEX_IMAGE=hotplex:go \
+		HOST_UID=$(HOST_UID) \
+		VERSION=$(VERSION) \
+		COMMIT=$(COMMIT) \
+		BUILD_TIME=$(BUILD_TIME) \
+		HOTPLEX_HOST_CONFIGS_DIR=$(HOST_CONFIGS_DIR) \
+		docker compose up -d
+
+docker-dev-all: docker-build-go docker-dev ## @docker Rebuild local Go image and start dev services
 
 docker-down: ## @docker Stop and remove services
-	@docker compose down --timeout 30
+	cd docker/matrix && docker compose down --timeout 30
 
 docker-restart: ## @docker Restart services (down → sync → up)
 	@$(MAKE) docker-down
@@ -464,21 +536,20 @@ docker-restart: ## @docker Restart services (down → sync → up)
 	@$(MAKE) docker-up
 
 docker-logs: ## @docker Follow container logs (Ctrl+C to stop)
-	@docker compose logs -f
+	cd docker/matrix && docker compose logs -f
 
-docker-sync: ## @docker Sync local configs to ~/.hotplex/configs/
-	@mkdir -p $(HOME)/.hotplex/configs
-	@cp configs/chatapps/*.yaml $(HOME)/.hotplex/configs/
-	@printf "${GREEN}✅ Configs synced to ~/.hotplex/configs/${NC}\n"
+docker-sync: docker-prepare ## @docker Sync local configs to host dir
+	@cp -r configs/* $(HOST_CONFIGS_DIR)/
+	@printf "${GREEN}✅ Configs synced to ${BOLD}$(HOST_CONFIGS_DIR)${NC}\n"
 
 docker-health: ## @docker Show health status of all services
-	@for svc in $$(docker compose ps --services 2>/dev/null); do \
+	cd docker/matrix && for svc in $$(docker compose ps --services 2>/dev/null); do \
 		status=$$(docker inspect --format='{{.State.Health.Status}}' $$svc 2>/dev/null || echo "not_found"); \
 		printf "  $$svc: $$status\n"; \
 	done
 
 docker-check-net: ## @docker Test proxy connectivity from inside containers
-	@for svc in $$(docker compose ps --services 2>/dev/null); do \
+	cd docker/matrix && for svc in $$(docker compose ps --services 2>/dev/null); do \
 		printf "  $$svc: "; \
 		docker exec $$svc nc -zv host.docker.internal 15721 2>&1 | grep -q succeeded && printf "LLM Proxy OK, " || printf "LLM Proxy FAIL, "; \
 		docker exec $$svc nc -zv host.docker.internal 7897 2>&1 | grep -q succeeded && printf "General Proxy OK\n" || printf "General Proxy FAIL\n"; \
@@ -486,7 +557,7 @@ docker-check-net: ## @docker Test proxy connectivity from inside containers
 
 docker-upgrade: ## @docker Pull latest images and restart services
 	@printf "${CYAN}🚀 Pulling latest images...${NC}\n"
-	@docker compose pull
+	cd docker/matrix && docker compose pull
 	@$(MAKE) docker-restart
 
 docker-clean: ## @docker Remove all local hotplex stack images
